@@ -2,6 +2,14 @@ defaults:
   maxRows: 1000
   timeoutMs: 10000
 
+sshServers:
+  - id: bastion-prod
+    host: bastion-prod
+    sshConfigPath: ssh/config
+    privateKeyPath: ssh/id_rsa
+    passphrase: optional-key-passphrase
+    idleTimeoutMs: 60000
+
 dbServers:
   - id: prod-postgres
     type: postgres
@@ -16,16 +24,13 @@ dbServers:
 
   - id: reporting-mysql
     type: mysql
+    sshServerId: bastion-prod
     database:
       host: 127.0.0.1
       port: 3306
       user: app
       password: mysql-password
       database: app
-    ssh:
-      host: bastion-prod
-      privateKeyPath: ssh/id_rsa
-      passphrase: optional-key-passphrase
 
 clients:
   - id: analytics-app

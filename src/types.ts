@@ -39,17 +39,24 @@ export interface SshConfig {
   proxyJumps?: SshConfig[];
 }
 
+export interface SshServerConfig extends SshConfig {
+  id: string;
+  sshConfigPath?: string;
+  idleTimeoutMs?: number;
+}
+
 export interface DbServerConfig {
   id: string;
   type: DatabaseType;
   maxRows?: number;
   timeoutMs?: number;
   database: DatabaseConfig;
-  ssh?: SshConfig;
+  sshServerId?: string;
 }
 
 export interface GatewayConfig {
   defaults: DefaultsConfig;
+  sshServers: SshServerConfig[];
   clients: ClientConfig[];
   dbServers: DbServerConfig[];
 }

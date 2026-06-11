@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
 import { GatewayError } from "./errors.js";
-import type { GatewayConfig } from "./types.js";
+import type { GatewayConfig, SshConfig, SshServerConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = "config/gateway.yaml";
 const DEFAULT_SSH_PORT = 22;
@@ -33,14 +33,14 @@ export function loadConfig(configPath = process.env.SQLTUNNEL_CONFIG ?? DEFAULT_
 
   const parsed = YAML.parse(fs.readFileSync(absolutePath, "utf8")) as Partial<GatewayConfig>;
   const configDir = path.dirname(absolutePath);
-  const sshHosts = loadSshHosts();
   const config: GatewayConfig = {
     defaults: {
       maxRows: parsed.defaults?.maxRows ?? 1000,
       timeoutMs: parsed.defaults?.timeoutMs ?? 10000
     },
+    sshServers: normalizeSshServers(parsed.sshServers ?? [], configDir),
     clients: parsed.clients ?? [],
-    dbServers: normalizeDbServers(parsed.dbServers ?? [], configDir, sshHosts)
+    dbServers: parsed.dbServers ?? []
   };
 
   validateConfig(config);
@@ -89,6 +89,22 @@ function validateConfig(config: GatewayConfig) {
     }
   }
 
+  const sshServerIds = new Set<string>();
+  for (const sshServer of config.sshServers) {
+    requireString(sshServer.id, "sshServers[].id");
+    if (sshServerIds.has(sshServer.id)) {
+      throw new GatewayError("INVALID_CONFIG", `Duplicate sshServer id: ${sshServer.id}`, 500);
+    }
+    sshServerIds.add(sshServer.id);
+    validateSshConfig(sshServer, `sshServers[${sshServer.id}]`);
+    if (sshServer.sshConfigPath !== undefined) {
+      requireString(sshServer.sshConfigPath, `sshServers[${sshServer.id}].sshConfigPath`);
+    }
+    if (sshServer.idleTimeoutMs !== undefined) {
+      requirePositiveInteger(sshServer.idleTimeoutMs, `sshServers[${sshServer.id}].idleTimeoutMs`);
+    }
+  }
+
   const dbServerIds = new Set<string>();
   for (const dbServer of config.dbServers) {
     requireString(dbServer.id, "dbServers[].id");
@@ -111,28 +127,14 @@ function validateConfig(config: GatewayConfig) {
     }
     requireString(dbServer.database.password, `dbServers[${dbServer.id}].database.password`);
     requireString(dbServer.database?.database, `dbServers[${dbServer.id}].database.database`);
-    if (dbServer.ssh) {
-      requireString(dbServer.ssh.host, `dbServers[${dbServer.id}].ssh.host`);
-      requirePositiveInteger(dbServer.ssh.port, `dbServers[${dbServer.id}].ssh.port`);
-      requireString(dbServer.ssh.username, `dbServers[${dbServer.id}].ssh.username`);
-      if (dbServer.ssh.password !== undefined) {
-        requireString(dbServer.ssh.password, `dbServers[${dbServer.id}].ssh.password`);
-      }
-      if (dbServer.ssh.privateKeyPath !== undefined) {
-        requireString(dbServer.ssh.privateKeyPath, `dbServers[${dbServer.id}].ssh.privateKeyPath`);
-      }
-      if (dbServer.ssh.passphrase !== undefined) {
-        requireString(dbServer.ssh.passphrase, `dbServers[${dbServer.id}].ssh.passphrase`);
-      }
-      if (dbServer.ssh.proxyJumps !== undefined) {
-        if (!Array.isArray(dbServer.ssh.proxyJumps)) {
-          throw new GatewayError("INVALID_CONFIG", `dbServers[${dbServer.id}].ssh.proxyJumps must be an array`, 500);
-        }
-        for (const [index, proxyJump] of dbServer.ssh.proxyJumps.entries()) {
-          requireString(proxyJump.host, `dbServers[${dbServer.id}].ssh.proxyJumps[${index}].host`);
-          requirePositiveInteger(proxyJump.port, `dbServers[${dbServer.id}].ssh.proxyJumps[${index}].port`);
-          requireString(proxyJump.username, `dbServers[${dbServer.id}].ssh.proxyJumps[${index}].username`);
-        }
+    if (dbServer.sshServerId !== undefined) {
+      requireString(dbServer.sshServerId, `dbServers[${dbServer.id}].sshServerId`);
+      if (!sshServerIds.has(dbServer.sshServerId)) {
+        throw new GatewayError(
+          "INVALID_CONFIG",
+          `dbServer ${dbServer.id} references unknown sshServer ${dbServer.sshServerId}`,
+          500
+        );
       }
     }
   }
@@ -182,31 +184,54 @@ function resolveSshPath(filePath: string, configDir: string): string {
   return path.resolve(os.homedir(), filePath);
 }
 
-function normalizeDbServers(
-  dbServers: GatewayConfig["dbServers"],
-  configDir: string,
-  sshHosts: Map<string, SshHostConfig>
-): GatewayConfig["dbServers"] {
-  return dbServers.map((dbServer) => {
-    if (!dbServer.ssh) {
-      return dbServer;
+function validateSshConfig(sshConfig: SshConfig, label: string) {
+  requireString(sshConfig.host, `${label}.host`);
+  requirePositiveInteger(sshConfig.port, `${label}.port`);
+  requireString(sshConfig.username, `${label}.username`);
+  if (sshConfig.password !== undefined) {
+    requireString(sshConfig.password, `${label}.password`);
+  }
+  if (sshConfig.privateKeyPath !== undefined) {
+    requireString(sshConfig.privateKeyPath, `${label}.privateKeyPath`);
+  }
+  if (sshConfig.passphrase !== undefined) {
+    requireString(sshConfig.passphrase, `${label}.passphrase`);
+  }
+  if (sshConfig.proxyJumps !== undefined) {
+    if (!Array.isArray(sshConfig.proxyJumps)) {
+      throw new GatewayError("INVALID_CONFIG", `${label}.proxyJumps must be an array`, 500);
     }
+    for (const [index, proxyJump] of sshConfig.proxyJumps.entries()) {
+      validateSshConfig(proxyJump, `${label}.proxyJumps[${index}]`);
+    }
+  }
+}
 
-    const yamlSsh = dbServer.ssh;
+function normalizeSshServers(
+  sshServers: GatewayConfig["sshServers"],
+  configDir: string
+): GatewayConfig["sshServers"] {
+  return sshServers.map((sshServer) => {
+    const sshConfigPath = sshServer.sshConfigPath
+      ? resolveConfigPath(sshServer.sshConfigPath, configDir)
+      : undefined;
+    const sshHosts = loadSshHosts(sshConfigPath);
 
     return {
-      ...dbServer,
-      ssh: resolveSshConfig(yamlSsh, configDir, sshHosts, new Set())
+      ...resolveSshConfig(sshServer, configDir, sshHosts, new Set()),
+      id: sshServer.id,
+      sshConfigPath,
+      idleTimeoutMs: sshServer.idleTimeoutMs
     };
   });
 }
 
 function resolveSshConfig(
-  sshConfig: GatewayConfig["dbServers"][number]["ssh"],
+  sshConfig: SshConfig | undefined,
   configDir: string,
   sshHosts: Map<string, SshHostConfig>,
   seenHosts: Set<string>
-): NonNullable<GatewayConfig["dbServers"][number]["ssh"]> {
+): SshConfig {
   if (!sshConfig) {
     throw new GatewayError("INVALID_CONFIG", "ssh config is required", 500);
   }
@@ -255,7 +280,7 @@ function resolveProxyJump(
   configDir: string,
   sshHosts: Map<string, SshHostConfig>,
   seenHosts: Set<string>
-): NonNullable<GatewayConfig["dbServers"][number]["ssh"]> {
+): SshConfig {
   const parsed = parseProxyJump(proxyJump);
   return resolveSshConfig(
     {
@@ -285,8 +310,8 @@ function parseProxyJump(proxyJump: string): { host: string; port?: number; usern
   };
 }
 
-function loadSshHosts(): Map<string, SshHostConfig> {
-  const sshConfigPath = path.join(os.homedir(), ".ssh", "config");
+function loadSshHosts(configPath?: string): Map<string, SshHostConfig> {
+  const sshConfigPath = configPath ?? path.join(os.homedir(), ".ssh", "config");
   if (!fs.existsSync(sshConfigPath)) {
     return new Map();
   }

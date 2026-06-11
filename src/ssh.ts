@@ -2,36 +2,136 @@ import fs from "node:fs";
 import type { Socket } from "node:net";
 import { Client } from "ssh2";
 import { GatewayError } from "./errors.js";
-import type { DbServerConfig, SshConfig } from "./types.js";
+import type { SshConfig, SshServerConfig } from "./types.js";
 
 export interface Tunnel {
   stream: Socket;
   close: () => void;
 }
 
-export async function openSshTunnel(connection: DbServerConfig): Promise<Tunnel | undefined> {
-  if (!connection.ssh) {
-    return undefined;
+const DEFAULT_IDLE_TIMEOUT_MS = 60_000;
+
+interface PoolEntry {
+  clients: Client[];
+  activeChannels: number;
+  idleTimer?: NodeJS.Timeout;
+  connecting?: Promise<Client[]>;
+}
+
+export class SshTunnelPool {
+  private readonly sshServersById: Map<string, SshServerConfig>;
+  private readonly entries = new Map<string, PoolEntry>();
+
+  constructor(sshServers: SshServerConfig[]) {
+    this.sshServersById = new Map(sshServers.map((sshServer) => [sshServer.id, sshServer]));
   }
 
-  const sshConfig = connection.ssh;
-  const clients = await connectSshChain(sshConfig);
-  const targetClient = clients.at(-1);
-  if (!targetClient) {
-    throw new Error(`Failed to open SSH tunnel for ${connection.id}`);
-  }
-
-  const stream = await openForward(targetClient, connection.database.host, connection.database.port);
-
-  return {
-    stream,
-    close: () => {
-      stream.destroy();
-      for (const client of clients.reverse()) {
-        client.end();
-      }
+  async openTunnel(sshServerId: string, host: string, port: number): Promise<Tunnel> {
+    const sshServer = this.sshServersById.get(sshServerId);
+    if (!sshServer) {
+      throw new GatewayError("INVALID_CONFIG", `Unknown sshServer: ${sshServerId}`, 500);
     }
-  };
+
+    const entry = await this.getEntry(sshServer);
+    entry.activeChannels += 1;
+
+    try {
+      const targetClient = entry.clients.at(-1);
+      if (!targetClient) {
+        throw new GatewayError("SSH_TUNNEL_ERROR", `SSH tunnel ${sshServerId} is not connected`, 502);
+      }
+
+      const stream = await openForward(targetClient, host, port);
+      return {
+        stream,
+        close: () => {
+          stream.destroy();
+          this.release(sshServer.id);
+        }
+      };
+    } catch (error) {
+      this.release(sshServer.id);
+      throw error;
+    }
+  }
+
+  async closeAll(): Promise<void> {
+    for (const sshServerId of this.entries.keys()) {
+      this.closeEntry(sshServerId);
+    }
+  }
+
+  private async getEntry(sshServer: SshServerConfig): Promise<PoolEntry> {
+    const existing = this.entries.get(sshServer.id);
+    if (existing?.clients.length) {
+      if (existing.idleTimer) {
+        clearTimeout(existing.idleTimer);
+        existing.idleTimer = undefined;
+      }
+      return existing;
+    }
+
+    if (existing?.connecting) {
+      const clients = await existing.connecting;
+      existing.clients = clients;
+      existing.connecting = undefined;
+      return existing;
+    }
+
+    const entry: PoolEntry = {
+      clients: [],
+      activeChannels: 0
+    };
+    entry.connecting = connectSshChain(sshServer);
+    this.entries.set(sshServer.id, entry);
+
+    try {
+      entry.clients = await entry.connecting;
+      entry.connecting = undefined;
+      for (const client of entry.clients) {
+        client.once("close", () => {
+          if (this.entries.get(sshServer.id) === entry) {
+            this.closeEntry(sshServer.id);
+          }
+        });
+      }
+      return entry;
+    } catch (error) {
+      this.entries.delete(sshServer.id);
+      throw error;
+    }
+  }
+
+  private release(sshServerId: string) {
+    const entry = this.entries.get(sshServerId);
+    if (!entry) {
+      return;
+    }
+
+    entry.activeChannels = Math.max(0, entry.activeChannels - 1);
+    if (entry.activeChannels > 0 || entry.idleTimer) {
+      return;
+    }
+
+    const sshServer = this.sshServersById.get(sshServerId);
+    const idleTimeoutMs = sshServer?.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
+    entry.idleTimer = setTimeout(() => this.closeEntry(sshServerId), idleTimeoutMs);
+  }
+
+  private closeEntry(sshServerId: string) {
+    const entry = this.entries.get(sshServerId);
+    if (!entry) {
+      return;
+    }
+
+    if (entry.idleTimer) {
+      clearTimeout(entry.idleTimer);
+    }
+    this.entries.delete(sshServerId);
+    for (const client of [...entry.clients].reverse()) {
+      client.end();
+    }
+  }
 }
 
 async function connectSshChain(target: SshConfig): Promise<Client[]> {

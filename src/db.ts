@@ -1,12 +1,13 @@
 import mysql from "mysql2/promise";
 import pg from "pg";
 import { GatewayError } from "./errors.js";
-import { openSshTunnel } from "./ssh.js";
+import type { SshTunnelPool, Tunnel } from "./ssh.js";
 import { withRowLimit } from "./sql.js";
 import type { DbServerConfig, QueryResult } from "./types.js";
 
 export interface ExecuteQueryOptions {
   connection: DbServerConfig;
+  sshTunnelPool: SshTunnelPool;
   sql: string;
   params: unknown[];
   maxRows: number;
@@ -35,7 +36,7 @@ export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryR
 }
 
 async function runMysql(options: ExecuteQueryOptions, sql: string) {
-  const tunnel = await openSshTunnel(options.connection);
+  const tunnel = await openTunnel(options);
   let client: mysql.Connection | undefined;
 
   try {
@@ -65,7 +66,7 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
 }
 
 async function runPostgres(options: ExecuteQueryOptions, sql: string) {
-  const tunnel = await openSshTunnel(options.connection);
+  const tunnel = await openTunnel(options);
   const client = new pg.Client({
     host: tunnel ? undefined : options.connection.database.host,
     port: tunnel ? undefined : options.connection.database.port,
@@ -91,6 +92,18 @@ async function runPostgres(options: ExecuteQueryOptions, sql: string) {
     await client.end().catch(() => undefined);
     tunnel?.close();
   }
+}
+
+async function openTunnel(options: ExecuteQueryOptions): Promise<Tunnel | undefined> {
+  if (!options.connection.sshServerId) {
+    return undefined;
+  }
+
+  return options.sshTunnelPool.openTunnel(
+    options.connection.sshServerId,
+    options.connection.database.host,
+    options.connection.database.port
+  );
 }
 
 function resolveDatabasePassword(connection: DbServerConfig): string {

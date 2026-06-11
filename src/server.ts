@@ -7,6 +7,7 @@ import { AuthService } from "./auth.js";
 import { executeQuery } from "./db.js";
 import { GatewayError, toErrorPayload } from "./errors.js";
 import { normalizeParams, normalizeSql, resolveMaxRows } from "./sql.js";
+import { SshTunnelPool } from "./ssh.js";
 import type { GatewayConfig, QueryRequest } from "./types.js";
 
 export function buildServer(config: GatewayConfig) {
@@ -15,10 +16,15 @@ export function buildServer(config: GatewayConfig) {
     genReqId: () => randomUUID()
   });
   const auth = new AuthService(config);
+  const sshTunnelPool = new SshTunnelPool(config.sshServers);
   const dbServersById = new Map(config.dbServers.map((dbServer) => [dbServer.id, dbServer]));
   const openApiDocument = loadOpenApiDocument();
 
   app.register(sensible);
+
+  app.addHook("onClose", async () => {
+    await sshTunnelPool.closeAll();
+  });
 
   app.setErrorHandler((error, request, reply) => {
     const payload = toErrorPayload(error, request.id);
@@ -49,7 +55,7 @@ export function buildServer(config: GatewayConfig) {
         permission: grant.permission,
         maxRows,
         timeoutMs,
-        ssh: Boolean(dbServer.ssh)
+        ssh: Boolean(dbServer.sshServerId)
       };
     });
 
@@ -80,6 +86,7 @@ export function buildServer(config: GatewayConfig) {
 
     return executeQuery({
       connection,
+      sshTunnelPool,
       sql,
       params,
       maxRows,

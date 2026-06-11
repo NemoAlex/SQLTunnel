@@ -50,30 +50,31 @@ curl -X POST http://localhost:3000/query \
 
 配置里使用两个核心概念：
 
+- `sshServers`：可复用的 SSH 隧道配置，支持 `~/.ssh/config` 和 `ProxyJump`。
 - `dbServers`：真实数据库服务器，包含数据库类型、地址、账号密码、SSH 隧道等连接信息。
 - `clients`：调用网关的客户端，包含 `apiKey`，并逐个声明它能访问哪些 `dbServers`。
 
-### DB Servers
+### SSH Servers
 
-`dbServers` 定义可以连接的数据库服务器。每个 server 需要一个唯一 `id`，后续 client 用这个 `id` 引用它。
+`sshServers` 定义可复用的 SSH 连接。db server 通过 `sshServerId` 引用它；运行时会按 SSH server id 建立连接池，同一个 id 的查询复用同一条 SSH 链路，只为每次查询打开新的转发 channel。
 
 ```yaml
-dbServers:
-  - id: prod-postgres
-    type: postgres
-    maxRows: 1000
-    timeoutMs: 10000
-    database:
-      host: 127.0.0.1
-      port: 5432
-      user: postgres
-      password: postgres-password
-      database: app
+sshServers:
+  - id: bastion-prod
+    sshConfigPath: ssh/config
+    host: db-prod
+    idleTimeoutMs: 60000
 ```
 
-数据库密码直接写在 `database.password`。SSH 可配置 `ssh.password`，或配置 `ssh.privateKeyPath` 使用私钥；`ssh.passphrase` 用于带密码的私钥。
+`idleTimeoutMs` 表示没有活跃查询后多久关闭 SSH 连接，默认 60000 毫秒。
 
-如果 `ssh.host` 写的是 `~/.ssh/config` 中的 Host alias，网关会从 SSH config 补 `HostName`、`User`、`Port`、`IdentityFile` 和 `ProxyJump`。YAML 中显式配置的值优先。
+如果 `host` 写的是 SSH config 中的 Host alias，网关会从 SSH config 补 `HostName`、`User`、`Port`、`IdentityFile` 和 `ProxyJump`。YAML 中显式配置的值优先。
+
+`sshConfigPath` 用来指定 SSH config 文件。相对路径基于当前 `gateway.yaml` 所在目录解析。未配置时，默认读取运行用户的 `~/.ssh/config`。Docker 环境推荐把 SSH config 放到 `config/ssh/config`，然后写：
+
+```yaml
+sshConfigPath: ssh/config
+```
 
 例如 SSH config：
 
@@ -93,13 +94,48 @@ Host db-prod
 YAML 中可以只引用 Host alias：
 
 ```yaml
-ssh:
-  host: db-prod
+sshServers:
+  - id: db-prod
+    sshConfigPath: ssh/config
+    host: db-prod
 ```
 
-本地运行时会使用 `SSH_AUTH_SOCK` 连接 ssh-agent。容器运行时如果也想使用 agent，需要把 agent socket 挂进容器；否则请在 YAML 或 SSH config 中配置可读取的 `IdentityFile`，加密私钥还需要在 YAML 中配置 `ssh.passphrase`。
+本地运行时会使用 `SSH_AUTH_SOCK` 连接 ssh-agent。容器运行时如果也想使用 agent，需要把 agent socket 挂进容器；否则请在 YAML 或 SSH config 中配置可读取的 `IdentityFile`，加密私钥还需要在 YAML 中配置 `passphrase`。
 
-`ssh.privateKeyPath` 写相对路径时，会基于当前配置文件所在目录解析。例如默认配置文件是 `config/gateway.yaml`，则 `privateKeyPath: ssh/id_rsa` 会解析为 `config/ssh/id_rsa`。
+`privateKeyPath` 写相对路径时，会基于当前配置文件所在目录解析。例如默认配置文件是 `config/gateway.yaml`，则 `privateKeyPath: ssh/id_rsa` 会解析为 `config/ssh/id_rsa`。
+
+### DB Servers
+
+`dbServers` 定义可以连接的数据库服务器。每个 server 需要一个唯一 `id`，后续 client 用这个 `id` 引用它。
+
+```yaml
+dbServers:
+  - id: prod-postgres
+    type: postgres
+    maxRows: 1000
+    timeoutMs: 10000
+    database:
+      host: 127.0.0.1
+      port: 5432
+      user: postgres
+      password: postgres-password
+      database: app
+```
+
+数据库密码直接写在 `database.password`。如果数据库需要通过 SSH 访问，配置 `sshServerId`：
+
+```yaml
+dbServers:
+  - id: reporting-mysql
+    type: mysql
+    sshServerId: bastion-prod
+    database:
+      host: 127.0.0.1
+      port: 3306
+      user: app
+      password: mysql-password
+      database: app
+```
 
 ### Clients
 
