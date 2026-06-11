@@ -1,0 +1,11 @@
+services:
+  sqltunnel:
+    build:
+      context: .
+    image: sqltunnel:local
+    container_name: sqltunnel
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config:ro

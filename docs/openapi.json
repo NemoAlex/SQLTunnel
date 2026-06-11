@@ -1,0 +1,91 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SQLTunnel Gateway API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Health status"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OpenAPI document"
+          }
+        }
+      }
+    },
+    "/connections": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["apiKey"],
+                "properties": {
+                  "apiKey": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accessible connections"
+          }
+        }
+      }
+    },
+    "/query": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["apiKey", "connectionId", "sql"],
+                "properties": {
+                  "apiKey": {
+                    "type": "string"
+                  },
+                  "connectionId": {
+                    "type": "string"
+                  },
+                  "sql": {
+                    "type": "string"
+                  },
+                  "params": {
+                    "type": "array",
+                    "items": {}
+                  },
+                  "maxRows": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query result"
+          }
+        }
+      }
+    }
+  }
+}

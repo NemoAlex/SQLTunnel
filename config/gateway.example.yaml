@@ -1,0 +1,49 @@
+defaults:
+  maxRows: 1000
+  timeoutMs: 10000
+
+dbServers:
+  - id: prod-postgres
+    type: postgres
+    maxRows: 1000
+    timeoutMs: 10000
+    database:
+      host: 127.0.0.1
+      port: 5432
+      user: postgres
+      password: postgres-password
+      database: app
+
+  - id: reporting-mysql
+    type: mysql
+    database:
+      host: 127.0.0.1
+      port: 3306
+      user: app
+      password: mysql-password
+      database: app
+    ssh:
+      host: bastion-prod
+      privateKeyPath: ssh/id_rsa
+      passphrase: optional-key-passphrase
+
+clients:
+  - id: analytics-app
+    apiKey: dev-read-key
+    dbServers:
+      - serverId: prod-postgres
+        permission: read
+        maxRows: 500
+        timeoutMs: 5000
+      - serverId: reporting-mysql
+        permission: read
+
+  - id: admin-tool
+    apiKey: dev-write-key
+    dbServers:
+      - serverId: prod-postgres
+        permission: write
+        maxRows: 100
+        timeoutMs: 3000
+      - serverId: reporting-mysql
+        permission: read
