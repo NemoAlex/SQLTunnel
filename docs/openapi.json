@@ -31,7 +31,7 @@
           }
         }
       },
-      "Connection": {
+      "DbServer": {
         "type": "object",
         "required": ["id", "type", "permission", "maxRows", "timeoutMs", "ssh"],
         "properties": {
@@ -59,23 +59,23 @@
           }
         }
       },
-      "ConnectionsResponse": {
+      "DbServersResponse": {
         "type": "object",
-        "required": ["connections"],
+        "required": ["dbServers"],
         "properties": {
-          "connections": {
+          "dbServers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Connection"
+              "$ref": "#/components/schemas/DbServer"
             }
           }
         }
       },
       "QueryRequest": {
         "type": "object",
-        "required": ["connectionId", "sql"],
+        "required": ["dbServerId", "sql"],
         "properties": {
-          "connectionId": {
+          "dbServerId": {
             "type": "string"
           },
           "sql": {
@@ -98,7 +98,7 @@
       },
       "QueryJsonResponse": {
         "type": "object",
-        "required": ["columns", "rows", "rowCount", "durationMs", "connectionId"],
+        "required": ["columns", "rows", "rowCount", "durationMs", "dbServerId"],
         "properties": {
           "columns": {
             "type": "array",
@@ -121,7 +121,7 @@
             "type": "integer",
             "minimum": 0
           },
-          "connectionId": {
+          "dbServerId": {
             "type": "string"
           }
         }
@@ -158,8 +158,8 @@
           }
         }
       },
-      "NotFound": {
-        "description": "The requested connection was not found. Common code: CONNECTION_NOT_FOUND.",
+      "DbServerNotFound": {
+        "description": "The requested db server was not found. Common code: DB_SERVER_NOT_FOUND.",
         "content": {
           "application/json": {
             "schema": {
@@ -191,7 +191,7 @@
     }
   },
   "paths": {
-    "/connections": {
+    "/db-servers": {
       "post": {
         "security": [
           {
@@ -211,11 +211,11 @@
         },
         "responses": {
           "200": {
-            "description": "Accessible connections",
+            "description": "Accessible db servers",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConnectionsResponse"
+                  "$ref": "#/components/schemas/DbServersResponse"
                 }
               }
             }
@@ -272,7 +272,7 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "404": {
-            "$ref": "#/components/responses/NotFound"
+            "$ref": "#/components/responses/DbServerNotFound"
           },
           "408": {
             "$ref": "#/components/responses/QueryTimeout"

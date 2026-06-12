@@ -9,7 +9,7 @@ pg.types.setTypeParser(114, (value) => value);
 pg.types.setTypeParser(3802, (value) => value);
 
 export interface ExecuteQueryOptions {
-  connection: DbServerConfig;
+  dbServer: DbServerConfig;
   sshTunnelPool: SshTunnelPool;
   sql: string;
   params: unknown[];
@@ -21,12 +21,12 @@ export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryR
   const started = Date.now();
   const limitedSql = withRowLimit(options.sql, options.maxRows);
 
-  if (options.connection.type === "mysql") {
+  if (options.dbServer.type === "mysql") {
     const result = await runWithTimeout(runMysql(options, limitedSql), options.timeoutMs);
     return {
       ...result,
       durationMs: Date.now() - started,
-      connectionId: options.connection.id
+      dbServerId: options.dbServer.id
     };
   }
 
@@ -34,7 +34,7 @@ export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryR
   return {
     ...result,
     durationMs: Date.now() - started,
-    connectionId: options.connection.id
+    dbServerId: options.dbServer.id
   };
 }
 
@@ -44,11 +44,11 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
 
   try {
     client = await mysql.createConnection({
-      host: tunnel ? undefined : options.connection.database.host,
-      port: tunnel ? undefined : options.connection.database.port,
-      user: options.connection.database.user,
-      password: resolveDatabasePassword(options.connection),
-      database: options.connection.database.database,
+      host: tunnel ? undefined : options.dbServer.database.host,
+      port: tunnel ? undefined : options.dbServer.database.port,
+      user: options.dbServer.database.user,
+      password: resolveDatabasePassword(options.dbServer),
+      database: options.dbServer.database.database,
       stream: tunnel?.stream,
       namedPlaceholders: false,
       multipleStatements: false,
@@ -74,11 +74,11 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
 async function runPostgres(options: ExecuteQueryOptions, sql: string) {
   const tunnel = await openTunnel(options);
   const client = new pg.Client({
-    host: tunnel ? undefined : options.connection.database.host,
-    port: tunnel ? undefined : options.connection.database.port,
-    user: options.connection.database.user,
-    password: resolveDatabasePassword(options.connection),
-    database: options.connection.database.database,
+    host: tunnel ? undefined : options.dbServer.database.host,
+    port: tunnel ? undefined : options.dbServer.database.port,
+    user: options.dbServer.database.user,
+    password: resolveDatabasePassword(options.dbServer),
+    database: options.dbServer.database.database,
     statement_timeout: options.timeoutMs,
     query_timeout: options.timeoutMs,
     connectionTimeoutMillis: options.timeoutMs,
@@ -101,22 +101,22 @@ async function runPostgres(options: ExecuteQueryOptions, sql: string) {
 }
 
 async function openTunnel(options: ExecuteQueryOptions): Promise<Tunnel | undefined> {
-  if (!options.connection.sshServerId) {
+  if (!options.dbServer.sshServerId) {
     return undefined;
   }
 
   return options.sshTunnelPool.openTunnel(
-    options.connection.sshServerId,
-    options.connection.database.host,
-    options.connection.database.port
+    options.dbServer.sshServerId,
+    options.dbServer.database.host,
+    options.dbServer.database.port
   );
 }
 
-function resolveDatabasePassword(connection: DbServerConfig): string {
-  if (connection.database.password !== undefined) {
-    return connection.database.password;
+function resolveDatabasePassword(dbServer: DbServerConfig): string {
+  if (dbServer.database.password !== undefined) {
+    return dbServer.database.password;
   }
-  throw new GatewayError("INVALID_CONFIG", `Connection ${connection.id} database password is not configured`, 500);
+  throw new GatewayError("INVALID_CONFIG", `Db server ${dbServer.id} database password is not configured`, 500);
 }
 
 function normalizeMysqlColumns(fields: unknown): string[] {

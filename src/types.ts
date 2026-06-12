@@ -66,7 +66,7 @@ export interface AuthContext {
 }
 
 export interface QueryRequest {
-  connectionId: string;
+  dbServerId: string;
   sql: string;
   params?: unknown[];
   maxRows?: number;
@@ -78,5 +78,5 @@ export interface QueryResult {
   rows: Record<string, unknown>[];
   rowCount: number;
   durationMs: number;
-  connectionId: string;
+  dbServerId: string;
 }

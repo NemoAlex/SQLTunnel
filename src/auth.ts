@@ -24,7 +24,7 @@ export class AuthService {
   getDbServerGrant(context: AuthContext, dbServer: DbServerConfig): ClientDbServerGrant {
     const grant = context.client.dbServers.find((entry) => entry.serverId === dbServer.id);
     if (!grant) {
-      throw new GatewayError("FORBIDDEN", `API key cannot access connection ${dbServer.id}`, 403);
+      throw new GatewayError("FORBIDDEN", `API key cannot access db server ${dbServer.id}`, 403);
     }
     return grant;
   }

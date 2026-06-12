@@ -45,7 +45,7 @@ export function buildServer(config: GatewayConfig) {
 
   app.get("/openapi.json", async (request) => withRequestServer(openApiDocument, request));
 
-  app.post("/connections", async (request) => {
+  app.post("/db-servers", async (request) => {
     const context = auth.authenticate(getApiKey(request));
     const allowed = context.client.dbServers.map((grant) => {
       const dbServer = dbServersById.get(grant.serverId);
@@ -66,34 +66,34 @@ export function buildServer(config: GatewayConfig) {
       };
     });
 
-    return { connections: allowed };
+    return { dbServers: allowed };
   });
 
   app.post("/query", async (request) => {
     const body = request.body as Partial<QueryRequest> | undefined;
     const context = auth.authenticate(getApiKey(request));
-    if (!body || typeof body.connectionId !== "string") {
-      throw new GatewayError("INVALID_REQUEST", "connectionId is required");
+    if (!body || typeof body.dbServerId !== "string") {
+      throw new GatewayError("INVALID_REQUEST", "dbServerId is required");
     }
 
-    const connection = dbServersById.get(body.connectionId);
-    if (!connection) {
-      throw new GatewayError("CONNECTION_NOT_FOUND", `Connection not found: ${body.connectionId}`, 404);
+    const dbServer = dbServersById.get(body.dbServerId);
+    if (!dbServer) {
+      throw new GatewayError("DB_SERVER_NOT_FOUND", `Db server not found: ${body.dbServerId}`, 404);
     }
 
-    const grant = auth.getDbServerGrant(context, connection);
+    const grant = auth.getDbServerGrant(context, dbServer);
 
     const sql = normalizeSql(body.sql);
     const params = normalizeParams(body.params);
     const responseFormat = normalizeResponseFormat(body.responseFormat);
-    const configuredMaxRows = resolveEffectiveLimit(connection.maxRows ?? config.defaults.maxRows, grant.maxRows);
+    const configuredMaxRows = resolveEffectiveLimit(dbServer.maxRows ?? config.defaults.maxRows, grant.maxRows);
     const maxRows = resolveMaxRows(body.maxRows, configuredMaxRows);
-    const timeoutMs = resolveEffectiveLimit(connection.timeoutMs ?? config.defaults.timeoutMs, grant.timeoutMs);
+    const timeoutMs = resolveEffectiveLimit(dbServer.timeoutMs ?? config.defaults.timeoutMs, grant.timeoutMs);
 
     auth.assertWriteAllowed(grant, sql);
 
     const result = await executeQuery({
-      connection,
+      dbServer,
       sshTunnelPool,
       sql,
       params,
