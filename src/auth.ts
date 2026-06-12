@@ -41,18 +41,104 @@ export class AuthService {
 }
 
 export function isReadOnlySql(sql: string): boolean {
-  const normalized = stripSqlComments(sql).trim().toLowerCase();
+  const statements = splitSqlStatements(sql);
+  if (statements.length !== 1) {
+    return false;
+  }
+
+  const normalized = statements[0].trim().toLowerCase();
   if (!normalized) {
     return false;
   }
-  if (normalized.includes(";")) {
-    return false;
-  }
+
   return /^(select|with|show|describe|desc|explain)\b/.test(normalized);
 }
 
-function stripSqlComments(sql: string): string {
-  return sql
-    .replace(/--.*$/gm, "")
-    .replace(/\/\*[\s\S]*?\*\//g, "");
+function splitSqlStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = "";
+  let quote: "'" | "\"" | "`" | undefined;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const char = sql[index];
+    const next = sql[index + 1];
+
+    if (inLineComment) {
+      if (char === "\n" || char === "\r") {
+        inLineComment = false;
+        current += " ";
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+        current += " ";
+      }
+      continue;
+    }
+
+    if (quote) {
+      current += char;
+
+      if (char === "\\" && quote !== "`" && next !== undefined) {
+        current += next;
+        index += 1;
+        continue;
+      }
+
+      if (char === quote) {
+        if (next === quote && quote !== "`") {
+          current += next;
+          index += 1;
+          continue;
+        }
+        quote = undefined;
+      }
+      continue;
+    }
+
+    if (char === "-" && next === "-") {
+      inLineComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "#") {
+      inLineComment = true;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "'" || char === "\"" || char === "`") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === ";") {
+      if (current.trim()) {
+        statements.push(current.trim());
+      }
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.trim()) {
+    statements.push(current.trim());
+  }
+
+  return statements;
 }
