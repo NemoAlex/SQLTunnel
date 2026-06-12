@@ -1,8 +1,53 @@
 # SQLTunnel
 
-基于 Fastify 的 Node.js/TypeScript 数据库连接网关。它提供 REST API 用于列出已配置的连接，并直接或通过 SSH 隧道对 MySQL 或 PostgreSQL 执行受限的 SQL 查询。
+[Chinese](README.zh-CN.md)
 
-## 快速开始
+SQLTunnel is a database access gateway for external applications that need to query databases reachable only from private networks.
+
+It is designed for cases where databases live behind a firewall, inside a VPC, or behind a bastion host, while tools such as Dify, AI agents, automation platforms, or internal apps need controlled query access. SQLTunnel runs in an environment that can reach the database or SSH bastion, and exposes a small API to authorized clients. The database port does not need to be exposed directly.
+
+SQLTunnel is especially useful for giving AI tools database query access:
+
+- Identify callers with API keys.
+- Authorize each client for specific db servers only.
+- Configure read or write permission per client and per db server.
+- Reach private databases through SSH tunnels.
+- Read SSH config, including Host aliases and ProxyJump.
+- Enforce query row limits and timeouts.
+- Default to read-oriented access; writes require explicit permission.
+
+## How It Works
+
+Typical request path:
+
+```text
+Dify / AI Agent / external app
+  -> SQLTunnel API
+  -> SSH tunnel or direct connection
+  -> private database
+```
+
+The configuration file defines three main objects:
+
+- `dbServers`: databases that SQLTunnel can access.
+- `sshServers`: reusable SSH tunnel entries, optionally backed by SSH config.
+- `clients`: external callers and the db servers they are allowed to use.
+
+External applications do not see database passwords or SSH private keys. They only receive their own API key and the db server ids they are allowed to query.
+
+## Use Cases
+
+SQLTunnel fits these scenarios:
+
+- Dify or another AI tool needs to query a private database.
+- A database must not expose a public port and is reachable only through a bastion host or SSH config.
+- Multiple external applications need the same database access gateway with different permissions.
+- Database credentials, SSH private keys, and bastion details should stay in server-side configuration.
+- AI-generated SQL should be constrained by read/write permission, row limits, and timeouts.
+
+SQLTunnel does not generate SQL and does not replace database auditing. Its role is to forward authorized query requests to the correct db server and enforce basic access controls.
+
+## Quick Start
 
 ```bash
 npm install
@@ -10,7 +55,7 @@ cp config/gateway.example.yaml config/gateway.yaml
 npm run dev
 ```
 
-服务默认监听 `0.0.0.0:3000`，可通过环境变量覆盖：
+The service listens on `0.0.0.0:3000` by default. Override host and port with environment variables:
 
 ```bash
 FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run dev
@@ -23,60 +68,80 @@ cp config/gateway.example.yaml config/gateway.yaml
 docker compose up --build
 ```
 
-Compose 会把本地 `./config` 挂载到容器内的 `/app/config`。应用默认读取工作目录下的 `config/gateway.yaml`。
+Default `compose.yaml` settings:
 
-调用方法如下：
+- Service name: `sqltunnel`.
+- Builds from the local `Dockerfile`.
+- Image name: `sqltunnel:local`.
+- Container name: `sqltunnel`.
+- Restart policy: `unless-stopped`.
+- Maps host port `3000` to container port `3000`.
+- Mounts local `./config` to `/app/config` as read-only.
+- Does not set a config-path environment variable; the service reads `/app/config/gateway.yaml` by default.
 
-```bash
-curl http://localhost:3000/health
-curl -X POST http://localhost:3000/db-servers \
-  -H 'X-SQLTunnel-API-Key: dev-read-key'
+For SSH config in Docker, put SSH config and private keys under `config/ssh/`, then reference them with paths relative to `gateway.yaml`, for example `sshConfigPath: ssh/config` and `privateKeyPath: ssh/id_rsa`. The whole `config` directory is mounted into the container.
 
-curl -X POST http://localhost:3000/query \
-  -H 'X-SQLTunnel-API-Key: dev-read-key' \
-  -H 'content-type: application/json' \
-  -d '{
-    "dbServerId": "prod-postgres",
-    "sql": "select * from users limit 10",
-    "params": [],
-    "maxRows": 100,
-    "responseFormat": "json"
-  }'
-```
+## Configuration
 
-## 配置
+SQLTunnel reads `config/gateway.yaml` by default. You can override it with `SQLTUNNEL_CONFIG=/path/to/gateway.yaml`.
 
-网关默认读取 `config/gateway.yaml`。可通过 `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` 覆盖。
+The configuration has three main sections:
 
-配置里使用两个核心概念：
-
-- `sshServers`：可复用的 SSH 隧道配置，支持 `~/.ssh/config` 和 `ProxyJump`。
-- `dbServers`：真实数据库服务器，包含数据库类型、地址、账号密码、SSH 隧道等连接信息。
-- `clients`：调用网关的客户端，包含 `apiKey`，并逐个声明它能访问哪些 `dbServers`。
+- `sshServers`: reusable SSH tunnel entries, with support for `~/.ssh/config` and `ProxyJump`.
+- `dbServers`: database servers, including database type, address, credentials, and optional SSH access.
+- `clients`: API clients, their API keys, and the db servers each client may access.
 
 ### SSH Servers
 
-`sshServers` 定义可复用的 SSH 连接。db server 通过 `sshServerId` 引用它；运行时会按 SSH server id 建立连接池，同一个 id 的查询复用同一条 SSH 链路，只为每次查询打开新的转发 channel。
+`sshServers` define reusable SSH tunnel entries. A db server references one with `sshServerId`.
 
 ```yaml
 sshServers:
   - id: bastion-prod
     sshConfigPath: ssh/config
     host: db-prod
+    port: 22
+    username: deploy
+    password: optional-password
+    privateKeyPath: ssh/id_rsa
+    passphrase: optional-key-passphrase
     idleTimeoutMs: 60000
 ```
 
-`idleTimeoutMs` 表示没有活跃查询后多久关闭 SSH 连接，默认 60000 毫秒。
+Fields:
 
-如果 `host` 写的是 SSH config 中的 Host alias，网关会从 SSH config 补 `HostName`、`User`、`Port`、`IdentityFile` 和 `ProxyJump`。YAML 中显式配置的值优先。
+- `id`: Required. SSH server id used by `dbServers[].sshServerId`.
+- `host`: Required. Real SSH host or a Host alias from SSH config.
+- `sshConfigPath`: Optional. SSH config path. Relative paths are resolved from the directory containing `gateway.yaml`. If omitted, SQLTunnel reads the runtime user's `~/.ssh/config`.
+- `port`: Optional. SSH port. Default: `22`.
+- `username`: Optional. SSH username. Default: current runtime user.
+- `password`: Optional. SSH password for password authentication.
+- `privateKeyPath`: Optional. Private key path. Relative paths are resolved from the directory containing `gateway.yaml`. If omitted, SQLTunnel may use SSH config `IdentityFile` or common default private keys from the runtime user.
+- `passphrase`: Optional. Passphrase for an encrypted private key.
+- `idleTimeoutMs`: Optional. How long to keep an idle SSH connection open. Default: `60000`.
+- `proxyJumps`: Optional. ProxyJump chain. In most cases, put ProxyJump in SSH config and SQLTunnel will read it from there.
 
-`sshConfigPath` 用来指定 SSH config 文件。相对路径基于当前 `gateway.yaml` 所在目录解析。未配置时，默认读取运行用户的 `~/.ssh/config`。Docker 环境推荐把 SSH config 放到 `config/ssh/config`，然后写：
+Supported SSH config fields:
+
+- `Host`
+- `HostName`
+- `User`
+- `Port`
+- `IdentityFile`
+- `ProxyJump`
+
+When `host` is a Host alias, SQLTunnel can fill in the real host, user, port, private key, and ProxyJump from SSH config.
+
+Docker-friendly SSH config example:
 
 ```yaml
-sshConfigPath: ssh/config
+sshServers:
+  - id: db-prod
+    sshConfigPath: ssh/config
+    host: db-prod
 ```
 
-例如 SSH config：
+Matching SSH config:
 
 ```sshconfig
 Host bastion-prod
@@ -91,44 +156,21 @@ Host db-prod
   ProxyJump bastion-prod
 ```
 
-YAML 中可以只引用 Host alias：
+SQLTunnel reuses SSH connections by SSH server id. Each query opens a new forwarding channel. Idle SSH connections are closed after `idleTimeoutMs`.
 
-```yaml
-sshServers:
-  - id: db-prod
-    sshConfigPath: ssh/config
-    host: db-prod
-```
-
-本地运行时会使用 `SSH_AUTH_SOCK` 连接 ssh-agent。容器运行时如果也想使用 agent，需要把 agent socket 挂进容器；否则请在 YAML 或 SSH config 中配置可读取的 `IdentityFile`，加密私钥还需要在 YAML 中配置 `passphrase`。
-
-`privateKeyPath` 写相对路径时，会基于当前配置文件所在目录解析。例如默认配置文件是 `config/gateway.yaml`，则 `privateKeyPath: ssh/id_rsa` 会解析为 `config/ssh/id_rsa`。
+Local runs use `SSH_AUTH_SOCK` when an ssh-agent is available. In Docker, mount the agent socket yourself if you want to use ssh-agent; otherwise configure a private key readable inside the container.
 
 ### DB Servers
 
-`dbServers` 定义可以连接的数据库服务器。每个 server 需要一个唯一 `id`，后续 client 用这个 `id` 引用它。
-
-```yaml
-dbServers:
-  - id: prod-postgres
-    type: postgres
-    maxRows: 1000
-    timeoutMs: 10000
-    database:
-      host: 127.0.0.1
-      port: 5432
-      user: postgres
-      password: postgres-password
-      database: app
-```
-
-数据库密码直接写在 `database.password`。如果数据库需要通过 SSH 访问，配置 `sshServerId`：
+`dbServers` define databases that SQLTunnel can access. Clients receive access by db server id.
 
 ```yaml
 dbServers:
   - id: reporting-mysql
     type: mysql
     sshServerId: bastion-prod
+    maxRows: 1000
+    timeoutMs: 10000
     database:
       host: 127.0.0.1
       port: 3306
@@ -137,9 +179,22 @@ dbServers:
       database: app
 ```
 
+Fields:
+
+- `id`: Required. Db server id used by `clients[].dbServers[].serverId` and query request `dbServerId`.
+- `type`: Required. Database type: `mysql` or `postgres`.
+- `sshServerId`: Optional. References `sshServers[].id`. If omitted, SQLTunnel connects directly to the database.
+- `maxRows`: Optional. Default max rows for this db server. If omitted, `defaults.maxRows` is used.
+- `timeoutMs`: Optional. Default query timeout for this db server. If omitted, `defaults.timeoutMs` is used.
+- `database.host`: Required. Database host. When using an SSH tunnel, this address is resolved from the SSH server side.
+- `database.port`: Required. Database port.
+- `database.user`: Required. Database username.
+- `database.password`: Required. Database password, stored directly in the config file.
+- `database.database`: Required. Database name.
+
 ### Clients
 
-`clients` 定义调用网关的客户端。每个 client 有自己的 `apiKey`，并逐个声明它能访问哪些 db server。
+`clients` define external applications that can call SQLTunnel and the db servers they may access.
 
 ```yaml
 clients:
@@ -154,19 +209,27 @@ clients:
         permission: read
 ```
 
-每个 client 对每个 db server 都单独配置权限。`permission: read` 只能查询，`permission: write` 可以执行写入。client 侧的 `maxRows` 和 `timeoutMs` 会进一步收紧该 client 对该 server 的限制。
+Fields:
+
+- `id`: Required. Client id used to identify the caller.
+- `apiKey`: Required. API key sent by the caller in the `X-SQLTunnel-API-Key` header.
+- `dbServers`: Required. List of db servers this client can access.
+- `dbServers[].serverId`: Required. References `dbServers[].id`.
+- `dbServers[].permission`: Required. Permission: `read` or `write`. `read` allows read-only SQL; `write` allows write SQL.
+- `dbServers[].maxRows`: Optional. Max rows for this client on this db server. If omitted, db server or global defaults are used.
+- `dbServers[].timeoutMs`: Optional. Query timeout for this client on this db server. If omitted, db server or global defaults are used.
 
 ## API
 
-面向 Dify 的配置和调用说明见 [docs/dify.md](docs/dify.md)。
+For Dify-specific setup, see [docs/dify.md](docs/dify.md). Chinese version: [docs/dify.zh-CN.md](docs/dify.zh-CN.md).
 
 ### GET /health
 
-检查服务是否存活。
+Checks whether the service is alive.
 
-请求参数：无。
+Request parameters: none.
 
-成功响应：
+Success response:
 
 ```json
 {
@@ -176,27 +239,27 @@ clients:
 
 ### GET /openapi.json
 
-返回 OpenAPI 文档。
+Returns the OpenAPI document.
 
-请求参数：无。
+Request parameters: none.
 
-成功响应：基于 `docs/openapi.json` 的 JSON 内容，并自动加入当前请求地址对应的 `servers`。如果服务在反向代理后面，优先使用 `X-Forwarded-Proto` 和 `X-Forwarded-Host` 推断外部访问地址。
+Success response: JSON based on `docs/openapi.json`, with `servers` added from the current request URL. Behind a reverse proxy, `X-Forwarded-Proto` and `X-Forwarded-Host` are used to infer the external URL.
 
 ### POST /db-servers
 
-返回当前 client 可以访问的 db servers。
+Returns db servers accessible to the current client.
 
-请求 header：
+Request header:
 
-- `X-SQLTunnel-API-Key`：必填。client 的 API key。
+- `X-SQLTunnel-API-Key`: Required. Client API key.
 
-请求 body：可省略，也可以传空 JSON 对象。
+Request body: can be omitted or an empty JSON object.
 
 ```json
 {}
 ```
 
-成功响应：
+Success response:
 
 ```json
 {
@@ -213,20 +276,20 @@ clients:
 }
 ```
 
-响应字段：
+Response fields:
 
-- `dbServers[].id`：db server id，查询时作为 `dbServerId` 使用。
-- `dbServers[].type`：数据库类型，`mysql` 或 `postgres`。
-- `dbServers[].permission`：当前 client 对该 db server 的权限，`read` 或 `write`。
-- `dbServers[].maxRows`：该 client 在该 db server 上的最终最大返回行数。
-- `dbServers[].timeoutMs`：该 client 在该 db server 上的最终查询超时时间。
-- `dbServers[].ssh`：是否通过 SSH tunnel 连接。
+- `dbServers[].id`: Db server id, used as `dbServerId` in query requests.
+- `dbServers[].type`: Database type: `mysql` or `postgres`.
+- `dbServers[].permission`: Client permission on this db server: `read` or `write`.
+- `dbServers[].maxRows`: Effective max rows for this client on this db server.
+- `dbServers[].timeoutMs`: Effective query timeout for this client on this db server.
+- `dbServers[].ssh`: Whether this db server is reached through an SSH tunnel.
 
 ### POST /query
 
-执行 SQL 查询。
+Executes a SQL query.
 
-请求 body：
+Request body:
 
 ```json
 {
@@ -238,23 +301,21 @@ clients:
 }
 ```
 
-请求字段：
+Request fields:
 
-- Header `X-SQLTunnel-API-Key`：必填。client 的 API key。
-- `dbServerId`：必填。目标 db server id。
-- `sql`：必填。要执行的 SQL。
-- `params`：可选。SQL 参数数组，默认 `[]`。
-- `maxRows`：可选。本次请求希望返回的最大行数；最终值不会超过配置中的 server/client 限制。
-- `responseFormat`：可选，`raw` 或 `json`，默认 `raw`。
+- Header `X-SQLTunnel-API-Key`: Required. Client API key.
+- `dbServerId`: Required. Target db server id.
+- `sql`: Required. SQL to execute.
+- `params`: Optional. SQL parameter array. Default: `[]`.
+- `maxRows`: Optional. Requested max rows for this query. The effective value cannot exceed configured server/client limits.
+- `responseFormat`: Optional. `raw` or `json`. Default: `raw`.
 
-默认 `responseFormat: "raw"` 时返回 `text/plain`：
+With default `responseFormat: "raw"`, the response is `text/plain`:
 
-- 单列结果：每行一个原始值。
-- 多列结果：TSV 文本，第一行为列名。
+- Single-column result: one raw value per line.
+- Multi-column result: TSV text with column names on the first line.
 
-传 `responseFormat: "json"` 时返回结构化 JSON 对象：
-
-成功响应：
+With `responseFormat: "json"`, the response is structured JSON:
 
 ```json
 {
@@ -268,27 +329,27 @@ clients:
 }
 ```
 
-响应字段：
+Response fields:
 
-- `columns`：结果列名。
-- `rows`：结果行数组。
-- `rowCount`：返回行数。
-- `durationMs`：查询耗时，单位毫秒。
-- `dbServerId`：本次查询使用的 db server id。
+- `columns`: Result column names.
+- `rows`: Result rows.
+- `rowCount`: Number of returned rows.
+- `durationMs`: Query duration in milliseconds.
+- `dbServerId`: Db server used for this query.
 
-权限和限制：
+Permissions and limits:
 
-- `permission: read` 只允许只读 SQL，例如 `select`、`with`、`show`、`describe`、`explain`。
-- `permission: write` 允许写 SQL。
-- 多语句 SQL 会被当作非只读 SQL 处理。
-- 查询会强制套用 `maxRows` 和 `timeoutMs`。
+- `permission: read` allows read-only SQL such as `select`, `with`, `show`, `describe`, and `explain`.
+- `permission: write` allows write SQL.
+- Multi-statement SQL is treated as non-read-only SQL.
+- Queries always enforce `maxRows` and `timeoutMs`.
 
-错误返回格式：
+Error response format:
 
 ```json
 {
   "code": "ERROR_CODE",
-  "message": "人类可读的消息",
+  "message": "Human-readable message",
   "requestId": "req-1"
 }
 ```
