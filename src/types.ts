@@ -66,7 +66,6 @@ export interface AuthContext {
 }
 
 export interface QueryRequest {
-  apiKey: string;
   connectionId: string;
   sql: string;
   params?: unknown[];

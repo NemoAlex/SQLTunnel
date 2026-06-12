@@ -9,6 +9,11 @@ import { GatewayError, toErrorPayload } from "./errors.js";
 import { normalizeParams, normalizeResponseFormat, normalizeSql, resolveMaxRows } from "./sql.js";
 import { SshTunnelPool } from "./ssh.js";
 import type { GatewayConfig, QueryRequest } from "./types.js";
+import type { FastifyRequest } from "fastify";
+
+type OpenApiDocument = Record<string, unknown> & {
+  servers?: Array<{ url: string }>;
+};
 
 export function buildServer(config: GatewayConfig) {
   const app = Fastify({
@@ -28,6 +33,9 @@ export function buildServer(config: GatewayConfig) {
 
   app.setErrorHandler((error, request, reply) => {
     const payload = toErrorPayload(error, request.id);
+    if (payload.statusCode >= 500) {
+      request.log.error({ err: error, code: payload.body.code }, "request failed");
+    }
     reply.status(payload.statusCode).send(payload.body);
   });
 
@@ -35,11 +43,10 @@ export function buildServer(config: GatewayConfig) {
     status: "ok"
   }));
 
-  app.get("/openapi.json", async () => openApiDocument);
+  app.get("/openapi.json", async (request) => withRequestServer(openApiDocument, request));
 
   app.post("/connections", async (request) => {
-    const body = request.body as { apiKey?: unknown } | undefined;
-    const context = auth.authenticate(body?.apiKey);
+    const context = auth.authenticate(getApiKey(request));
     const allowed = context.client.dbServers.map((grant) => {
       const dbServer = dbServersById.get(grant.serverId);
       if (!dbServer) {
@@ -64,7 +71,7 @@ export function buildServer(config: GatewayConfig) {
 
   app.post("/query", async (request) => {
     const body = request.body as Partial<QueryRequest> | undefined;
-    const context = auth.authenticate(body?.apiKey);
+    const context = auth.authenticate(getApiKey(request));
     if (!body || typeof body.connectionId !== "string") {
       throw new GatewayError("INVALID_REQUEST", "connectionId is required");
     }
@@ -136,7 +143,40 @@ function resolveEffectiveLimit(serverLimit: number, clientLimit: number | undefi
   return Math.min(serverLimit, clientLimit);
 }
 
-function loadOpenApiDocument(): unknown {
+function loadOpenApiDocument(): OpenApiDocument {
   const openApiPath = path.resolve("docs/openapi.json");
-  return JSON.parse(fs.readFileSync(openApiPath, "utf8")) as unknown;
+  return JSON.parse(fs.readFileSync(openApiPath, "utf8")) as OpenApiDocument;
+}
+
+function getApiKey(request: FastifyRequest): unknown {
+  return request.headers["x-sqltunnel-api-key"];
+}
+
+function withRequestServer(document: OpenApiDocument, request: FastifyRequest): OpenApiDocument {
+  return {
+    ...document,
+    servers: [{ url: getRequestBaseUrl(request) }]
+  };
+}
+
+function getRequestBaseUrl(request: FastifyRequest): string {
+  const proto = firstHeaderValue(request.headers["x-forwarded-proto"]) ?? "http";
+  const host = firstHeaderValue(request.headers["x-forwarded-host"]) ?? request.headers.host;
+
+  if (!host) {
+    return `${proto}://localhost`;
+  }
+
+  return `${proto}://${host}`;
+}
+
+function firstHeaderValue(value: string | string[] | undefined): string | undefined {
+  const firstValue = Array.isArray(value) ? value[0] : value;
+  const normalized = firstValue?.split(",")[0]?.trim();
+
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized;
 }

@@ -55,7 +55,8 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
       connectTimeout: options.timeoutMs
     });
 
-    const [rows, fields] = await client.query({ sql, timeout: options.timeoutMs }, options.params);
+    const activeClient = client;
+    const [rows, fields] = await runSqlQuery(() => activeClient.query({ sql, timeout: options.timeoutMs }, options.params));
     const normalizedRows = Array.isArray(rows)
       ? (rows.slice(0, options.maxRows) as Record<string, unknown>[])
       : [];
@@ -86,7 +87,7 @@ async function runPostgres(options: ExecuteQueryOptions, sql: string) {
 
   try {
     await client.connect();
-    const result = await client.query(sql, options.params);
+    const result = await runSqlQuery(() => client.query(sql, options.params));
     const rows = result.rows.slice(0, options.maxRows);
     return {
       columns: result.fields.map((field) => field.name),
@@ -143,4 +144,22 @@ async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promis
       clearTimeout(timeout);
     }
   }
+}
+
+async function runSqlQuery<T>(query: () => Promise<T>): Promise<T> {
+  try {
+    return await query();
+  } catch (error) {
+    if (error instanceof GatewayError) {
+      throw error;
+    }
+    throw new GatewayError("QUERY_FAILED", getErrorMessage(error), 400);
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "Query failed";
 }

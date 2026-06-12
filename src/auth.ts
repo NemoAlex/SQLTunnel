@@ -10,7 +10,7 @@ export class AuthService {
 
   authenticate(apiKey: unknown): AuthContext {
     if (typeof apiKey !== "string" || apiKey.length === 0) {
-      throw new GatewayError("UNAUTHENTICATED", "apiKey is required in request body", 401);
+      throw new GatewayError("UNAUTHENTICATED", "X-SQLTunnel-API-Key header is required", 401);
     }
 
     const client = this.clientsByApiKey.get(apiKey);
