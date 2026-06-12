@@ -4,90 +4,281 @@
     "title": "SQLTunnel Gateway API",
     "version": "0.1.0"
   },
+  "components": {
+    "securitySchemes": {
+      "SQLTunnelApiKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-SQLTunnel-API-Key"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["code", "message", "requestId"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "examples": ["QUERY_FAILED"]
+          },
+          "message": {
+            "type": "string",
+            "examples": ["Table 'app.users' doesn't exist"]
+          },
+          "requestId": {
+            "type": "string",
+            "examples": ["42d826dc-f2d5-4e6a-9267-1a378e6362d2"]
+          }
+        }
+      },
+      "Connection": {
+        "type": "object",
+        "required": ["id", "type", "permission", "maxRows", "timeoutMs", "ssh"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["mysql", "postgres"]
+          },
+          "permission": {
+            "type": "string",
+            "enum": ["read", "write"]
+          },
+          "maxRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ssh": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ConnectionsResponse": {
+        "type": "object",
+        "required": ["connections"],
+        "properties": {
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Connection"
+            }
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "required": ["connectionId", "sql"],
+        "properties": {
+          "connectionId": {
+            "type": "string"
+          },
+          "sql": {
+            "type": "string"
+          },
+          "params": {
+            "type": "array",
+            "items": {}
+          },
+          "maxRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "responseFormat": {
+            "type": "string",
+            "enum": ["raw", "json"],
+            "default": "raw"
+          }
+        }
+      },
+      "QueryJsonResponse": {
+        "type": "object",
+        "required": ["columns", "rows", "rowCount", "durationMs", "connectionId"],
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "connectionId": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request or SQL query failed. Common codes: INVALID_REQUEST, QUERY_FAILED, WRITE_FORBIDDEN.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthenticated": {
+        "description": "Missing or invalid API key. Common code: UNAUTHENTICATED.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The API key cannot access the requested db server. Common code: FORBIDDEN.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "The requested connection was not found. Common code: CONNECTION_NOT_FOUND.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "QueryTimeout": {
+        "description": "The query exceeded the configured timeout. Common code: QUERY_TIMEOUT.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal gateway or configuration error. Common codes: INTERNAL_ERROR, INVALID_CONFIG.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
   "paths": {
-    "/health": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "Health status"
-          }
-        }
-      }
-    },
-    "/openapi.json": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "OpenAPI document"
-          }
-        }
-      }
-    },
     "/connections": {
       "post": {
+        "security": [
+          {
+            "SQLTunnelApiKey": []
+          }
+        ],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["apiKey"],
-                "properties": {
-                  "apiKey": {
-                    "type": "string"
-                  }
-                }
+                "properties": {}
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Accessible connections"
+            "description": "Accessible connections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
           }
         }
       }
     },
     "/query": {
       "post": {
+        "security": [
+          {
+            "SQLTunnelApiKey": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": ["apiKey", "connectionId", "sql"],
-                "properties": {
-                  "apiKey": {
-                    "type": "string"
-                  },
-                  "connectionId": {
-                    "type": "string"
-                  },
-                  "sql": {
-                    "type": "string"
-                  },
-                  "params": {
-                    "type": "array",
-                    "items": {}
-                  },
-                  "maxRows": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "responseFormat": {
-                    "type": "string",
-                    "enum": ["raw", "json"],
-                    "default": "raw"
-                  }
-                }
+                "$ref": "#/components/schemas/QueryRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Query result"
+            "description": "Query result. text/plain is returned by default; application/json is returned when responseFormat is json.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryJsonResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "408": {
+            "$ref": "#/components/responses/QueryTimeout"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
           }
         }
       }
