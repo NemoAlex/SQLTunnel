@@ -71,6 +71,7 @@ export interface QueryRequest {
   sql: string;
   params?: unknown[];
   maxRows?: number;
+  responseFormat?: "raw" | "json";
 }
 
 export interface QueryResult {

@@ -1,30 +1,30 @@
-defaults:
-  maxRows: 1000
-  timeoutMs: 10000
+defaults: # Optional. Global query limits used when db server/client grant does not define stricter values.
+  maxRows: 1000 # Optional. Default: 1000.
+  timeoutMs: 10000 # Optional. Default: 10000.
 
-sshServers:
+sshServers: # Optional. Reusable SSH connections referenced by dbServers[].sshServerId.
   - id: bastion-prod
-    host: bastion-prod
-    sshConfigPath: ssh/config
-    privateKeyPath: ssh/id_rsa
-    passphrase: optional-key-passphrase
-    idleTimeoutMs: 60000
+    host: bastion-prod # Required. Real hostname or Host alias from sshConfigPath / ~/.ssh/config.
+    sshConfigPath: ssh/config # Optional. Relative to gateway.yaml directory; default: ~/.ssh/config.
+    privateKeyPath: ssh/id_rsa # Optional. Relative to gateway.yaml directory; fallback: IdentityFile or ~/.ssh/id_*.
+    passphrase: optional-key-passphrase # Optional. Needed for encrypted private keys when ssh-agent cannot unlock them.
+    idleTimeoutMs: 60000 # Optional. Default: 60000.
 
-dbServers:
+dbServers: # Required. Database servers that clients can access.
   - id: prod-postgres
-    type: postgres
-    maxRows: 1000
-    timeoutMs: 10000
+    type: postgres # Required. mysql or postgres.
+    maxRows: 1000 # Optional. Falls back to defaults.maxRows.
+    timeoutMs: 10000 # Optional. Falls back to defaults.timeoutMs.
     database:
-      host: 127.0.0.1
-      port: 5432
-      user: postgres
-      password: postgres-password
-      database: app
+      host: 127.0.0.1 # Required.
+      port: 5432 # Required.
+      user: postgres # Required.
+      password: postgres-password # Required.
+      database: app # Required.
 
   - id: reporting-mysql
     type: mysql
-    sshServerId: bastion-prod
+    sshServerId: bastion-prod # Optional. Omit for direct database connections.
     database:
       host: 127.0.0.1
       port: 3306
@@ -32,14 +32,14 @@ dbServers:
       password: mysql-password
       database: app
 
-clients:
+clients: # Required. API clients and their per-db-server permissions.
   - id: analytics-app
-    apiKey: dev-read-key
+    apiKey: dev-read-key # Required. Sent in request body as apiKey.
     dbServers:
       - serverId: prod-postgres
-        permission: read
-        maxRows: 500
-        timeoutMs: 5000
+        permission: read # Required. read or write.
+        maxRows: 500 # Optional. Further restricts this client for this db server.
+        timeoutMs: 5000 # Optional. Further restricts this client for this db server.
       - serverId: reporting-mysql
         permission: read
 

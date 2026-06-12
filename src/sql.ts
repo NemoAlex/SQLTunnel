@@ -27,6 +27,16 @@ export function resolveMaxRows(requested: unknown, configuredMaxRows: number): n
   return Math.min(Number(requested), configuredMaxRows);
 }
 
+export function normalizeResponseFormat(responseFormat: unknown): "raw" | "json" {
+  if (responseFormat === undefined) {
+    return "raw";
+  }
+  if (responseFormat !== "raw" && responseFormat !== "json") {
+    throw new GatewayError("INVALID_REQUEST", "responseFormat must be raw or json");
+  }
+  return responseFormat;
+}
+
 export function withRowLimit(sql: string, maxRows: number): string {
   const trimmed = sql.trim().replace(/;+$/, "");
   const normalized = trimmed.toLowerCase();

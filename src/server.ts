@@ -6,7 +6,7 @@ import path from "node:path";
 import { AuthService } from "./auth.js";
 import { executeQuery } from "./db.js";
 import { GatewayError, toErrorPayload } from "./errors.js";
-import { normalizeParams, normalizeSql, resolveMaxRows } from "./sql.js";
+import { normalizeParams, normalizeResponseFormat, normalizeSql, resolveMaxRows } from "./sql.js";
 import { SshTunnelPool } from "./ssh.js";
 import type { GatewayConfig, QueryRequest } from "./types.js";
 
@@ -78,13 +78,14 @@ export function buildServer(config: GatewayConfig) {
 
     const sql = normalizeSql(body.sql);
     const params = normalizeParams(body.params);
+    const responseFormat = normalizeResponseFormat(body.responseFormat);
     const configuredMaxRows = resolveEffectiveLimit(connection.maxRows ?? config.defaults.maxRows, grant.maxRows);
     const maxRows = resolveMaxRows(body.maxRows, configuredMaxRows);
     const timeoutMs = resolveEffectiveLimit(connection.timeoutMs ?? config.defaults.timeoutMs, grant.timeoutMs);
 
     auth.assertWriteAllowed(grant, sql);
 
-    return executeQuery({
+    const result = await executeQuery({
       connection,
       sshTunnelPool,
       sql,
@@ -92,9 +93,40 @@ export function buildServer(config: GatewayConfig) {
       maxRows,
       timeoutMs
     });
+
+    if (responseFormat === "raw") {
+      return replyAsRawText(result);
+    }
+
+    return result;
   });
 
   return app;
+}
+
+function replyAsRawText(result: Awaited<ReturnType<typeof executeQuery>>) {
+  return result.columns.length === 1
+    ? result.rows.map((row) => formatRawValue(row[result.columns[0]])).join("\n")
+    : [
+        result.columns.join("\t"),
+        ...result.rows.map((row) => result.columns.map((column) => formatRawValue(row[column])).join("\t"))
+      ].join("\n");
+}
+
+function formatRawValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (Buffer.isBuffer(value)) {
+    return value.toString("base64");
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 function resolveEffectiveLimit(serverLimit: number, clientLimit: number | undefined): number {

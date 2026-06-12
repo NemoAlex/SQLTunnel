@@ -5,6 +5,9 @@ import type { SshTunnelPool, Tunnel } from "./ssh.js";
 import { withRowLimit } from "./sql.js";
 import type { DbServerConfig, QueryResult } from "./types.js";
 
+pg.types.setTypeParser(114, (value) => value);
+pg.types.setTypeParser(3802, (value) => value);
+
 export interface ExecuteQueryOptions {
   connection: DbServerConfig;
   sshTunnelPool: SshTunnelPool;
@@ -53,10 +56,12 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
     });
 
     const [rows, fields] = await client.query({ sql, timeout: options.timeoutMs }, options.params);
-    const normalizedRows = Array.isArray(rows) ? rows.slice(0, options.maxRows) : [];
+    const normalizedRows = Array.isArray(rows)
+      ? (rows.slice(0, options.maxRows) as Record<string, unknown>[])
+      : [];
     return {
       columns: normalizeMysqlColumns(fields),
-      rows: normalizedRows as Record<string, unknown>[],
+      rows: normalizedRows,
       rowCount: normalizedRows.length
     };
   } finally {

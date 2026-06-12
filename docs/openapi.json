@@ -74,6 +74,11 @@
                   "maxRows": {
                     "type": "integer",
                     "minimum": 1
+                  },
+                  "responseFormat": {
+                    "type": "string",
+                    "enum": ["raw", "json"],
+                    "default": "raw"
                   }
                 }
               }
