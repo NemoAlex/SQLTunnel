@@ -43,8 +43,5 @@ export function withRowLimit(sql: string, maxRows: number): string {
   if (/^(select|with)\b/.test(normalized)) {
     return `select * from (${trimmed}) as sqltunnel_limited limit ${maxRows}`;
   }
-  if (/^(show|describe|desc|explain)\b/.test(normalized) && !/\blimit\s+\d+\b/i.test(trimmed)) {
-    return `${trimmed} limit ${maxRows}`;
-  }
   return trimmed;
 }
