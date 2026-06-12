@@ -21,6 +21,8 @@ interface SshHostConfig {
   proxyJump?: string[];
 }
 
+type SshAuthFallback = Pick<SshConfig, "password" | "privateKeyPath" | "passphrase">;
+
 export function loadConfig(configPath = process.env.SQLTUNNEL_CONFIG ?? DEFAULT_CONFIG_PATH): GatewayConfig {
   const absolutePath = path.resolve(configPath);
   if (!fs.existsSync(absolutePath)) {
@@ -230,7 +232,8 @@ function resolveSshConfig(
   sshConfig: SshConfig | undefined,
   configDir: string,
   sshHosts: Map<string, SshHostConfig>,
-  seenHosts: Set<string>
+  seenHosts: Set<string>,
+  authFallback: SshAuthFallback = {}
 ): SshConfig {
   if (!sshConfig) {
     throw new GatewayError("INVALID_CONFIG", "ssh config is required", 500);
@@ -249,9 +252,15 @@ function resolveSshConfig(
     ? resolveConfigPath(sshConfig.privateKeyPath, configDir)
     : sshHost?.identityFile
       ? resolveSshPath(sshHost.identityFile, configDir)
+      : authFallback.privateKeyPath
+        ? resolveConfigPath(authFallback.privateKeyPath, configDir)
       : findDefaultIdentityFile();
   const proxyJumps = sshConfig.proxyJumps
-    ?? sshHost?.proxyJump?.map((proxyJump) => resolveProxyJump(proxyJump, configDir, sshHosts, nextSeenHosts));
+    ?? sshHost?.proxyJump?.map((proxyJump) => resolveProxyJump(proxyJump, configDir, sshHosts, nextSeenHosts, {
+      password: sshConfig.password ?? authFallback.password,
+      privateKeyPath: sshConfig.privateKeyPath ?? authFallback.privateKeyPath,
+      passphrase: sshConfig.passphrase ?? authFallback.passphrase
+    }));
 
   return {
     ...sshConfig,
@@ -259,7 +268,9 @@ function resolveSshConfig(
     hostAlias: originalHost,
     port: sshConfig.port ?? sshHost?.port ?? DEFAULT_SSH_PORT,
     username: sshConfig.username ?? sshHost?.user ?? os.userInfo().username,
+    password: sshConfig.password ?? authFallback.password,
     privateKeyPath,
+    passphrase: sshConfig.passphrase ?? authFallback.passphrase,
     proxyJumps
   };
 }
@@ -279,7 +290,8 @@ function resolveProxyJump(
   proxyJump: string,
   configDir: string,
   sshHosts: Map<string, SshHostConfig>,
-  seenHosts: Set<string>
+  seenHosts: Set<string>,
+  authFallback: SshAuthFallback
 ): SshConfig {
   const parsed = parseProxyJump(proxyJump);
   return resolveSshConfig(
@@ -290,7 +302,8 @@ function resolveProxyJump(
     },
     configDir,
     sshHosts,
-    seenHosts
+    seenHosts,
+    authFallback
   );
 }
 
