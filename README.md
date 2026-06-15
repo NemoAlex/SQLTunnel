@@ -20,11 +20,33 @@ SQLTunnel is especially useful for giving AI tools database query access:
 
 Typical request path:
 
-```text
-Dify / AI Agent / external app
-  -> SQLTunnel API
-  -> SSH tunnel or direct connection
-  -> private database
+```mermaid
+flowchart LR
+  subgraph Clients[" "]
+    direction TB
+    ClientsTitle["External environment"]
+    ExternalApp["External software, such as Dify or another AI Agent"]
+  end
+
+  subgraph Gateway[" "]
+    direction TB
+    GatewayTitle["Deployment with private-network access"]
+    SQLTunnel["SQLTunnel HTTP API"]
+    Secrets["Database passwords / SSH private keys stay here and are not exposed"]
+  end
+
+  subgraph Private[" "]
+    direction TB
+    PrivateTitle["Private environment"]
+    Database[("Private database, such as MySQL or PostgreSQL")]
+  end
+
+  ExternalApp -->|"HTTP API /query"| SQLTunnel
+  SQLTunnel -->|"direct connection or SSH tunnel"| Database
+
+  style ClientsTitle fill:transparent,stroke:transparent,font-weight:bold
+  style GatewayTitle fill:transparent,stroke:transparent,font-weight:bold
+  style PrivateTitle fill:transparent,stroke:transparent,font-weight:bold
 ```
 
 The configuration file defines three main objects:

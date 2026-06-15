@@ -20,11 +20,33 @@ SQLTunnel 特别适合给 Dify 等 AI 工具提供数据库查询能力：
 
 典型链路如下：
 
-```text
-Dify / AI Agent / 外部应用
-  -> SQLTunnel API
-  -> SSH tunnel 或直连
-  -> 内网数据库
+```mermaid
+flowchart LR
+  subgraph Clients[" "]
+    direction TB
+    ClientsTitle["外部环境"]
+    ExternalApp["外部软件，例如 Dify 或其他 AI Agent"]
+  end
+
+  subgraph Gateway[" "]
+    direction TB
+    GatewayTitle["可访问私有环境的部署位置"]
+    SQLTunnel["SQLTunnel HTTP API"]
+    Secrets["数据库密码 / SSH 私钥只存储在这里，不对外暴露"]
+  end
+
+  subgraph Private[" "]
+    direction TB
+    PrivateTitle["私有环境"]
+    Database[("内网数据库，例如 MySQL 或 PostgreSQL")]
+  end
+
+  ExternalApp -->|"HTTP API /query"| SQLTunnel
+  SQLTunnel -->|"直连或通过 SSH tunnel"| Database
+
+  style ClientsTitle fill:transparent,stroke:transparent,font-weight:bold
+  style GatewayTitle fill:transparent,stroke:transparent,font-weight:bold
+  style PrivateTitle fill:transparent,stroke:transparent,font-weight:bold
 ```
 
 SQLTunnel 的配置文件声明三类对象：
