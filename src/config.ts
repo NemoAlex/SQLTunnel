@@ -38,7 +38,8 @@ export function loadConfig(configPath = process.env.SQLTUNNEL_CONFIG ?? DEFAULT_
   const config: GatewayConfig = {
     defaults: {
       maxRows: parsed.defaults?.maxRows ?? 1000,
-      timeoutMs: parsed.defaults?.timeoutMs ?? 10000
+      queryTimeoutMs: parsed.defaults?.queryTimeoutMs ?? 10000,
+      connectTimeoutMs: parsed.defaults?.connectTimeoutMs ?? 10000
     },
     sshServers: normalizeSshServers(parsed.sshServers ?? [], configDir),
     clients: parsed.clients ?? [],
@@ -53,8 +54,11 @@ function validateConfig(config: GatewayConfig) {
   if (!Number.isInteger(config.defaults.maxRows) || config.defaults.maxRows <= 0) {
     throw new GatewayError("INVALID_CONFIG", "defaults.maxRows must be a positive integer", 500);
   }
-  if (!Number.isInteger(config.defaults.timeoutMs) || config.defaults.timeoutMs <= 0) {
-    throw new GatewayError("INVALID_CONFIG", "defaults.timeoutMs must be a positive integer", 500);
+  if (!Number.isInteger(config.defaults.queryTimeoutMs) || config.defaults.queryTimeoutMs <= 0) {
+    throw new GatewayError("INVALID_CONFIG", "defaults.queryTimeoutMs must be a positive integer", 500);
+  }
+  if (!Number.isInteger(config.defaults.connectTimeoutMs) || config.defaults.connectTimeoutMs <= 0) {
+    throw new GatewayError("INVALID_CONFIG", "defaults.connectTimeoutMs must be a positive integer", 500);
   }
 
   const clientIds = new Set<string>();
@@ -85,8 +89,8 @@ function validateConfig(config: GatewayConfig) {
       if (grant.maxRows !== undefined) {
         requirePositiveInteger(grant.maxRows, `clients[${client.id}].dbServers[${grant.serverId}].maxRows`);
       }
-      if (grant.timeoutMs !== undefined) {
-        requirePositiveInteger(grant.timeoutMs, `clients[${client.id}].dbServers[${grant.serverId}].timeoutMs`);
+      if (grant.queryTimeoutMs !== undefined) {
+        requirePositiveInteger(grant.queryTimeoutMs, `clients[${client.id}].dbServers[${grant.serverId}].queryTimeoutMs`);
       }
     }
   }
@@ -129,6 +133,12 @@ function validateConfig(config: GatewayConfig) {
     }
     requireString(dbServer.database.password, `dbServers[${dbServer.id}].database.password`);
     requireString(dbServer.database?.database, `dbServers[${dbServer.id}].database.database`);
+    if (dbServer.queryTimeoutMs !== undefined) {
+      requirePositiveInteger(dbServer.queryTimeoutMs, `dbServers[${dbServer.id}].queryTimeoutMs`);
+    }
+    if (dbServer.connectTimeoutMs !== undefined) {
+      requirePositiveInteger(dbServer.connectTimeoutMs, `dbServers[${dbServer.id}].connectTimeoutMs`);
+    }
     if (dbServer.sshServerId !== undefined) {
       requireString(dbServer.sshServerId, `dbServers[${dbServer.id}].sshServerId`);
       if (!sshServerIds.has(dbServer.sshServerId)) {

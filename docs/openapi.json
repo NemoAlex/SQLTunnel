@@ -33,7 +33,7 @@
       },
       "DbServer": {
         "type": "object",
-        "required": ["id", "type", "permission", "maxRows", "timeoutMs", "ssh"],
+        "required": ["id", "type", "permission", "maxRows", "queryTimeoutMs", "connectTimeoutMs", "ssh"],
         "properties": {
           "id": {
             "type": "string"
@@ -50,9 +50,14 @@
             "type": "integer",
             "minimum": 1
           },
-          "timeoutMs": {
+          "queryTimeoutMs": {
             "type": "integer",
             "minimum": 1
+          },
+          "connectTimeoutMs": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Timeout for SSH tunnel setup and database connection."
           },
           "ssh": {
             "type": "boolean"
@@ -169,7 +174,17 @@
         }
       },
       "QueryTimeout": {
-        "description": "The query exceeded the configured timeout. Common code: QUERY_TIMEOUT.",
+        "description": "The database query exceeded the configured query timeout. Common code: QUERY_TIMEOUT.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ConnectTimeout": {
+        "description": "SSH tunnel setup or database connection exceeded the configured connection timeout. Common code: CONNECT_TIMEOUT.",
         "content": {
           "application/json": {
             "schema": {
@@ -276,6 +291,9 @@
           },
           "408": {
             "$ref": "#/components/responses/QueryTimeout"
+          },
+          "504": {
+            "$ref": "#/components/responses/ConnectTimeout"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"

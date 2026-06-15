@@ -91,6 +91,12 @@ The configuration has three main sections:
 - `dbServers`: database servers, including database type, address, credentials, and optional SSH access.
 - `clients`: API clients, their API keys, and the db servers each client may access.
 
+Optional global defaults:
+
+- `defaults.maxRows`: Default max rows. Default: `1000`.
+- `defaults.queryTimeoutMs`: Default database query timeout. Default: `10000`.
+- `defaults.connectTimeoutMs`: Default SSH tunnel and database connection timeout. Default: `10000`.
+
 ### SSH Servers
 
 `sshServers` define reusable SSH tunnel entries. A db server references one with `sshServerId`.
@@ -170,7 +176,8 @@ dbServers:
     type: mysql
     sshServerId: bastion-prod
     maxRows: 1000
-    timeoutMs: 10000
+    queryTimeoutMs: 10000
+    connectTimeoutMs: 10000
     database:
       host: 127.0.0.1
       port: 3306
@@ -185,7 +192,8 @@ Fields:
 - `type`: Required. Database type: `mysql` or `postgres`.
 - `sshServerId`: Optional. References `sshServers[].id`. If omitted, SQLTunnel connects directly to the database.
 - `maxRows`: Optional. Default max rows for this db server. If omitted, `defaults.maxRows` is used.
-- `timeoutMs`: Optional. Default query timeout for this db server. If omitted, `defaults.timeoutMs` is used.
+- `queryTimeoutMs`: Optional. Default database query timeout for this db server. If omitted, `defaults.queryTimeoutMs` is used.
+- `connectTimeoutMs`: Optional. SSH tunnel and database connection timeout for this db server. If omitted, `defaults.connectTimeoutMs` is used. Default: `10000`.
 - `database.host`: Required. Database host. When using an SSH tunnel, this address is resolved from the SSH server side.
 - `database.port`: Required. Database port.
 - `database.user`: Required. Database username.
@@ -204,7 +212,7 @@ clients:
       - serverId: prod-postgres
         permission: read
         maxRows: 500
-        timeoutMs: 5000
+        queryTimeoutMs: 5000
       - serverId: reporting-mysql
         permission: read
 ```
@@ -217,7 +225,7 @@ Fields:
 - `dbServers[].serverId`: Required. References `dbServers[].id`.
 - `dbServers[].permission`: Required. Permission: `read` or `write`. `read` allows read-only SQL; `write` allows write SQL.
 - `dbServers[].maxRows`: Optional. Max rows for this client on this db server. If omitted, db server or global defaults are used.
-- `dbServers[].timeoutMs`: Optional. Query timeout for this client on this db server. If omitted, db server or global defaults are used.
+- `dbServers[].queryTimeoutMs`: Optional. Query timeout for this client on this db server. If omitted, db server or global defaults are used.
 
 ## API
 
@@ -269,7 +277,8 @@ Success response:
       "type": "postgres",
       "permission": "read",
       "maxRows": 500,
-      "timeoutMs": 5000,
+      "queryTimeoutMs": 5000,
+      "connectTimeoutMs": 10000,
       "ssh": false
     }
   ]
@@ -282,7 +291,8 @@ Response fields:
 - `dbServers[].type`: Database type: `mysql` or `postgres`.
 - `dbServers[].permission`: Client permission on this db server: `read` or `write`.
 - `dbServers[].maxRows`: Effective max rows for this client on this db server.
-- `dbServers[].timeoutMs`: Effective query timeout for this client on this db server.
+- `dbServers[].queryTimeoutMs`: Effective query timeout for this client on this db server.
+- `dbServers[].connectTimeoutMs`: Effective SSH tunnel and database connection timeout for this db server.
 - `dbServers[].ssh`: Whether this db server is reached through an SSH tunnel.
 
 ### POST /query
@@ -342,7 +352,8 @@ Permissions and limits:
 - `permission: read` allows read-only SQL such as `select`, `with`, `show`, `describe`, and `explain`.
 - `permission: write` allows write SQL.
 - Multi-statement SQL is treated as non-read-only SQL.
-- Queries always enforce `maxRows` and `timeoutMs`.
+- Queries always enforce `maxRows` and `queryTimeoutMs`.
+- SSH tunnel setup and database connection use `connectTimeoutMs`; SQL execution uses `queryTimeoutMs`.
 
 Error response format:
 

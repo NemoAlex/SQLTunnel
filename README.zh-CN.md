@@ -90,6 +90,12 @@ docker compose up --build
 - `dbServers`：真实数据库服务器，包含数据库类型、地址、账号密码、SSH 隧道等连接信息。
 - `clients`：调用网关的客户端，包含 `apiKey`，并逐个声明它能访问哪些 `dbServers`。
 
+可选全局默认值：
+
+- `defaults.maxRows`：默认最大返回行数。默认值：`1000`。
+- `defaults.queryTimeoutMs`：默认数据库查询超时时间。默认值：`10000`。
+- `defaults.connectTimeoutMs`：默认 SSH tunnel 建立和数据库连接超时时间。默认值：`10000`。
+
 ### SSH Servers
 
 `sshServers` 定义可复用的 SSH 隧道入口。db server 通过 `sshServerId` 引用它。
@@ -169,7 +175,8 @@ dbServers:
     type: mysql
     sshServerId: bastion-prod
     maxRows: 1000
-    timeoutMs: 10000
+    queryTimeoutMs: 10000
+    connectTimeoutMs: 10000
     database:
       host: 127.0.0.1
       port: 3306
@@ -184,7 +191,8 @@ dbServers:
 - `type`：必填。数据库类型，支持 `mysql` 或 `postgres`。
 - `sshServerId`：可选。引用 `sshServers[].id`；未配置时直接连接数据库。
 - `maxRows`：可选。该 db server 的默认最大返回行数；未配置时使用 `defaults.maxRows`。
-- `timeoutMs`：可选。该 db server 的默认查询超时时间；未配置时使用 `defaults.timeoutMs`。
+- `queryTimeoutMs`：可选。该 db server 的默认数据库查询超时时间；未配置时使用 `defaults.queryTimeoutMs`。
+- `connectTimeoutMs`：可选。该 db server 的 SSH tunnel 建立和数据库连接超时时间；未配置时使用 `defaults.connectTimeoutMs`。默认值：`10000`。
 - `database.host`：必填。数据库主机。通过 SSH 隧道访问时，这是从 SSH server 侧可访问的地址。
 - `database.port`：必填。数据库端口。
 - `database.user`：必填。数据库用户名。
@@ -203,7 +211,7 @@ clients:
       - serverId: prod-postgres
         permission: read
         maxRows: 500
-        timeoutMs: 5000
+        queryTimeoutMs: 5000
       - serverId: reporting-mysql
         permission: read
 ```
@@ -216,7 +224,7 @@ clients:
 - `dbServers[].serverId`：必填。引用 `dbServers[].id`。
 - `dbServers[].permission`：必填。权限，支持 `read` 或 `write`。`read` 只允许只读 SQL；`write` 允许写入 SQL。
 - `dbServers[].maxRows`：可选。该 client 访问该 db server 时的最大返回行数；未配置时使用 db server 或全局默认值。
-- `dbServers[].timeoutMs`：可选。该 client 访问该 db server 时的查询超时时间；未配置时使用 db server 或全局默认值。
+- `dbServers[].queryTimeoutMs`：可选。该 client 访问该 db server 时的查询超时时间；未配置时使用 db server 或全局默认值。
 
 ## API
 
@@ -268,7 +276,8 @@ clients:
       "type": "postgres",
       "permission": "read",
       "maxRows": 500,
-      "timeoutMs": 5000,
+      "queryTimeoutMs": 5000,
+      "connectTimeoutMs": 10000,
       "ssh": false
     }
   ]
@@ -281,7 +290,8 @@ clients:
 - `dbServers[].type`：数据库类型，`mysql` 或 `postgres`。
 - `dbServers[].permission`：当前 client 对该 db server 的权限，`read` 或 `write`。
 - `dbServers[].maxRows`：该 client 在该 db server 上的最终最大返回行数。
-- `dbServers[].timeoutMs`：该 client 在该 db server 上的最终查询超时时间。
+- `dbServers[].queryTimeoutMs`：该 client 在该 db server 上的最终查询超时时间。
+- `dbServers[].connectTimeoutMs`：该 db server 的最终 SSH tunnel 建立和数据库连接超时时间。
 - `dbServers[].ssh`：是否通过 SSH tunnel 连接。
 
 ### POST /query
@@ -343,7 +353,8 @@ clients:
 - `permission: read` 只允许只读 SQL，例如 `select`、`with`、`show`、`describe`、`explain`。
 - `permission: write` 允许写 SQL。
 - 多语句 SQL 会被当作非只读 SQL 处理。
-- 查询会强制套用 `maxRows` 和 `timeoutMs`。
+- 查询会强制套用 `maxRows` 和 `queryTimeoutMs`。
+- SSH tunnel 建立和数据库连接使用 `connectTimeoutMs`；SQL 执行使用 `queryTimeoutMs`。
 
 错误返回格式：
 

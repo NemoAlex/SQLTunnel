@@ -54,14 +54,16 @@ export function buildServer(config: GatewayConfig) {
       }
 
       const maxRows = resolveEffectiveLimit(dbServer.maxRows ?? config.defaults.maxRows, grant.maxRows);
-      const timeoutMs = resolveEffectiveLimit(dbServer.timeoutMs ?? config.defaults.timeoutMs, grant.timeoutMs);
+      const queryTimeoutMs = resolveEffectiveLimit(dbServer.queryTimeoutMs ?? config.defaults.queryTimeoutMs, grant.queryTimeoutMs);
+      const connectTimeoutMs = dbServer.connectTimeoutMs ?? config.defaults.connectTimeoutMs;
 
       return {
         id: dbServer.id,
         type: dbServer.type,
         permission: grant.permission,
         maxRows,
-        timeoutMs,
+        queryTimeoutMs,
+        connectTimeoutMs,
         ssh: Boolean(dbServer.sshServerId)
       };
     });
@@ -88,7 +90,8 @@ export function buildServer(config: GatewayConfig) {
     const responseFormat = normalizeResponseFormat(body.responseFormat);
     const configuredMaxRows = resolveEffectiveLimit(dbServer.maxRows ?? config.defaults.maxRows, grant.maxRows);
     const maxRows = resolveMaxRows(body.maxRows, configuredMaxRows);
-    const timeoutMs = resolveEffectiveLimit(dbServer.timeoutMs ?? config.defaults.timeoutMs, grant.timeoutMs);
+    const queryTimeoutMs = resolveEffectiveLimit(dbServer.queryTimeoutMs ?? config.defaults.queryTimeoutMs, grant.queryTimeoutMs);
+    const connectTimeoutMs = dbServer.connectTimeoutMs ?? config.defaults.connectTimeoutMs;
 
     auth.assertWriteAllowed(grant, sql);
 
@@ -98,7 +101,8 @@ export function buildServer(config: GatewayConfig) {
       sql,
       params,
       maxRows,
-      timeoutMs
+      queryTimeoutMs,
+      connectTimeoutMs
     });
 
     if (responseFormat === "raw") {

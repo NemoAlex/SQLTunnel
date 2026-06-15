@@ -26,13 +26,13 @@ export class SshTunnelPool {
     this.sshServersById = new Map(sshServers.map((sshServer) => [sshServer.id, sshServer]));
   }
 
-  async openTunnel(sshServerId: string, host: string, port: number): Promise<Tunnel> {
+  async openTunnel(sshServerId: string, host: string, port: number, connectTimeoutMs: number): Promise<Tunnel> {
     const sshServer = this.sshServersById.get(sshServerId);
     if (!sshServer) {
       throw new GatewayError("INVALID_CONFIG", `Unknown sshServer: ${sshServerId}`, 500);
     }
 
-    const entry = await this.getEntry(sshServer);
+    const entry = await this.getEntry(sshServer, connectTimeoutMs);
     entry.activeChannels += 1;
 
     try {
@@ -41,7 +41,7 @@ export class SshTunnelPool {
         throw new GatewayError("SSH_TUNNEL_ERROR", `SSH tunnel ${sshServerId} is not connected`, 502);
       }
 
-      const stream = await openForward(targetClient, host, port);
+      const stream = await openForward(targetClient, host, port, connectTimeoutMs);
       return {
         stream,
         close: () => {
@@ -61,7 +61,7 @@ export class SshTunnelPool {
     }
   }
 
-  private async getEntry(sshServer: SshServerConfig): Promise<PoolEntry> {
+  private async getEntry(sshServer: SshServerConfig, connectTimeoutMs: number): Promise<PoolEntry> {
     const existing = this.entries.get(sshServer.id);
     if (existing?.clients.length) {
       if (existing.idleTimer) {
@@ -72,7 +72,11 @@ export class SshTunnelPool {
     }
 
     if (existing?.connecting) {
-      const clients = await existing.connecting;
+      const clients = await withConnectTimeout(
+        existing.connecting,
+        connectTimeoutMs,
+        `Timed out while establishing SSH tunnel ${sshServer.id}`
+      );
       existing.clients = clients;
       existing.connecting = undefined;
       return existing;
@@ -82,11 +86,15 @@ export class SshTunnelPool {
       clients: [],
       activeChannels: 0
     };
-    entry.connecting = connectSshChain(sshServer);
+    entry.connecting = connectSshChain(sshServer, connectTimeoutMs);
     this.entries.set(sshServer.id, entry);
 
     try {
-      entry.clients = await entry.connecting;
+      entry.clients = await withConnectTimeout(
+        entry.connecting,
+        connectTimeoutMs,
+        `Timed out while establishing SSH tunnel ${sshServer.id}`
+      );
       entry.connecting = undefined;
       for (const client of entry.clients) {
         client.once("close", () => {
@@ -134,17 +142,17 @@ export class SshTunnelPool {
   }
 }
 
-async function connectSshChain(target: SshConfig): Promise<Client[]> {
+async function connectSshChain(target: SshConfig, connectTimeoutMs: number): Promise<Client[]> {
   const clients: Client[] = [];
   let previousClient: Client | undefined;
 
   for (const sshConfig of flattenSshChain(target)) {
     const sock = previousClient
-      ? await openForward(previousClient, requiredHost(sshConfig), requiredPort(sshConfig))
+      ? await openForward(previousClient, requiredHost(sshConfig), requiredPort(sshConfig), connectTimeoutMs)
       : undefined;
 
     try {
-      const client = await connectSsh(sshConfig, sock);
+      const client = await connectSsh(sshConfig, sock, connectTimeoutMs);
       clients.push(client);
       previousClient = client;
     } catch (error) {
@@ -169,14 +177,35 @@ function flattenSshChain(target: SshConfig): SshConfig[] {
   ];
 }
 
-async function connectSsh(sshConfig: SshConfig, sock?: Socket): Promise<Client> {
+async function connectSsh(sshConfig: SshConfig, sock: Socket | undefined, connectTimeoutMs: number): Promise<Client> {
   const client = new Client();
 
   try {
     await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        client.end();
+        reject(new GatewayError(
+          "CONNECT_TIMEOUT",
+          `Timed out while connecting to SSH server ${formatSshServer(sshConfig)}`,
+          504
+        ));
+      }, connectTimeoutMs);
+      const finish = (callback: () => void) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeout);
+        callback();
+      };
       client
-        .once("ready", () => resolve())
-        .once("error", reject)
+        .once("ready", () => finish(resolve))
+        .once("error", (error) => finish(() => reject(error)))
         .connect({
           host: sock ? undefined : requiredHost(sshConfig),
           port: sock ? undefined : requiredPort(sshConfig),
@@ -213,9 +242,23 @@ function isEncryptedPrivateKey(privateKey: string): boolean {
   return /ENCRYPTED/.test(privateKey) || /Proc-Type:\s*4,ENCRYPTED/.test(privateKey);
 }
 
-async function openForward(client: Client, host: string, port: number): Promise<Socket> {
+async function openForward(client: Client, host: string, port: number, connectTimeoutMs: number): Promise<Socket> {
   return new Promise<Socket>((resolve, reject) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      reject(new GatewayError("CONNECT_TIMEOUT", `Timed out while opening SSH tunnel to ${host}:${port}`, 504));
+    }, connectTimeoutMs);
     client.forwardOut("127.0.0.1", 0, host, port, (error, channel) => {
+      if (settled) {
+        channel?.destroy();
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
       if (error) {
         reject(error);
         return;
@@ -223,6 +266,21 @@ async function openForward(client: Client, host: string, port: number): Promise<
       resolve(channel as unknown as Socket);
     });
   });
+}
+
+async function withConnectTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new GatewayError("CONNECT_TIMEOUT", message, 504)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
 }
 
 function requiredHost(sshConfig: SshConfig): string {
@@ -246,11 +304,18 @@ function requiredUsername(sshConfig: SshConfig): string {
   return sshConfig.username;
 }
 
-function toSshGatewayError(error: unknown, sshConfig: SshConfig): GatewayError {
-  const message = error instanceof Error ? error.message : "Unknown SSH error";
+function formatSshServer(sshConfig: SshConfig): string {
   const host = sshConfig.hostAlias && sshConfig.hostAlias !== sshConfig.host
     ? `${sshConfig.hostAlias} (${sshConfig.host})`
     : requiredHost(sshConfig);
+  return `${requiredUsername(sshConfig)}@${host}:${requiredPort(sshConfig)}`;
+}
+
+function toSshGatewayError(error: unknown, sshConfig: SshConfig): GatewayError {
+  if (error instanceof GatewayError) {
+    return error;
+  }
+  const message = error instanceof Error ? error.message : "Unknown SSH error";
   const authHints = [
     sshConfig.password ? "password" : undefined,
     sshConfig.privateKeyPath ? `privateKey=${sshConfig.privateKeyPath}` : undefined,
@@ -259,7 +324,7 @@ function toSshGatewayError(error: unknown, sshConfig: SshConfig): GatewayError {
 
   return new GatewayError(
     "SSH_AUTH_FAILED",
-    `SSH authentication failed for ${requiredUsername(sshConfig)}@${host}:${requiredPort(sshConfig)}: ${message}. Auth sources: ${authHints}`,
+    `SSH authentication failed for ${formatSshServer(sshConfig)}: ${message}. Auth sources: ${authHints}`,
     502
   );
 }

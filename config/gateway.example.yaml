@@ -1,6 +1,7 @@
 defaults: # Optional. Global query limits used when db server/client grant does not define stricter values.
   maxRows: 1000 # Optional. Default: 1000.
-  timeoutMs: 10000 # Optional. Default: 10000.
+  queryTimeoutMs: 10000 # Optional. Database query timeout. Default: 10000.
+  connectTimeoutMs: 10000 # Optional. SSH tunnel and database connection timeout. Default: 10000.
 
 sshServers: # Optional. Reusable SSH connections referenced by dbServers[].sshServerId.
   - id: bastion-prod
@@ -14,7 +15,8 @@ dbServers: # Required. Database servers that clients can access.
   - id: prod-postgres
     type: postgres # Required. mysql or postgres.
     maxRows: 1000 # Optional. Falls back to defaults.maxRows.
-    timeoutMs: 10000 # Optional. Falls back to defaults.timeoutMs.
+    queryTimeoutMs: 10000 # Optional. Database query timeout; falls back to defaults.queryTimeoutMs.
+    connectTimeoutMs: 10000 # Optional. SSH tunnel and database connection timeout; falls back to defaults.connectTimeoutMs.
     database:
       host: 127.0.0.1 # Required.
       port: 5432 # Required.
@@ -39,7 +41,7 @@ clients: # Required. API clients and their per-db-server permissions.
       - serverId: prod-postgres
         permission: read # Required. read or write.
         maxRows: 500 # Optional. Further restricts this client for this db server.
-        timeoutMs: 5000 # Optional. Further restricts this client for this db server.
+        queryTimeoutMs: 5000 # Optional. Further restricts this client for this db server.
       - serverId: reporting-mysql
         permission: read
 
@@ -49,6 +51,6 @@ clients: # Required. API clients and their per-db-server permissions.
       - serverId: prod-postgres
         permission: write
         maxRows: 100
-        timeoutMs: 3000
+        queryTimeoutMs: 3000
       - serverId: reporting-mysql
         permission: read

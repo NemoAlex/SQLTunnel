@@ -14,7 +14,8 @@ export interface ExecuteQueryOptions {
   sql: string;
   params: unknown[];
   maxRows: number;
-  timeoutMs: number;
+  queryTimeoutMs: number;
+  connectTimeoutMs: number;
 }
 
 export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryResult> {
@@ -22,7 +23,7 @@ export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryR
   const limitedSql = withRowLimit(options.sql, options.maxRows);
 
   if (options.dbServer.type === "mysql") {
-    const result = await runWithTimeout(runMysql(options, limitedSql), options.timeoutMs);
+    const result = await runMysql(options, limitedSql);
     return {
       ...result,
       durationMs: Date.now() - started,
@@ -30,7 +31,7 @@ export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryR
     };
   }
 
-  const result = await runWithTimeout(runPostgres(options, limitedSql), options.timeoutMs);
+  const result = await runPostgres(options, limitedSql);
   return {
     ...result,
     durationMs: Date.now() - started,
@@ -43,20 +44,30 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
   let client: mysql.Connection | undefined;
 
   try {
-    client = await mysql.createConnection({
-      host: tunnel ? undefined : options.dbServer.database.host,
-      port: tunnel ? undefined : options.dbServer.database.port,
-      user: options.dbServer.database.user,
-      password: resolveDatabasePassword(options.dbServer),
-      database: options.dbServer.database.database,
-      stream: tunnel?.stream,
-      namedPlaceholders: false,
-      multipleStatements: false,
-      connectTimeout: options.timeoutMs
-    });
+    client = await runConnectStep(
+      () => mysql.createConnection({
+        host: tunnel ? undefined : options.dbServer.database.host,
+        port: tunnel ? undefined : options.dbServer.database.port,
+        user: options.dbServer.database.user,
+        password: resolveDatabasePassword(options.dbServer),
+        database: options.dbServer.database.database,
+        stream: tunnel?.stream,
+        namedPlaceholders: false,
+        multipleStatements: false,
+        connectTimeout: options.connectTimeoutMs
+      }),
+      options.connectTimeoutMs,
+      "Timed out while connecting to database"
+    );
 
     const activeClient = client;
-    const [rows, fields] = await runSqlQuery(() => activeClient.query({ sql, timeout: options.timeoutMs }, options.params));
+    const [rows, fields] = await runSqlQuery(() => runWithTimeout(
+      activeClient.query({ sql, timeout: options.queryTimeoutMs }, options.params),
+      options.queryTimeoutMs,
+      "QUERY_TIMEOUT",
+      "Database query timed out",
+      408
+    ));
     const normalizedRows = Array.isArray(rows)
       ? (rows.slice(0, options.maxRows) as Record<string, unknown>[])
       : [];
@@ -79,15 +90,21 @@ async function runPostgres(options: ExecuteQueryOptions, sql: string) {
     user: options.dbServer.database.user,
     password: resolveDatabasePassword(options.dbServer),
     database: options.dbServer.database.database,
-    statement_timeout: options.timeoutMs,
-    query_timeout: options.timeoutMs,
-    connectionTimeoutMillis: options.timeoutMs,
+    statement_timeout: options.queryTimeoutMs,
+    query_timeout: options.queryTimeoutMs,
+    connectionTimeoutMillis: options.connectTimeoutMs,
     stream: tunnel ? () => tunnel.stream : undefined
   });
 
   try {
-    await client.connect();
-    const result = await runSqlQuery(() => client.query(sql, options.params));
+    await runConnectStep(() => client.connect(), options.connectTimeoutMs, "Timed out while connecting to database");
+    const result = await runSqlQuery(() => runWithTimeout(
+      client.query(sql, options.params),
+      options.queryTimeoutMs,
+      "QUERY_TIMEOUT",
+      "Database query timed out",
+      408
+    ));
     const rows = result.rows.slice(0, options.maxRows);
     return {
       columns: result.fields.map((field) => field.name),
@@ -108,7 +125,8 @@ async function openTunnel(options: ExecuteQueryOptions): Promise<Tunnel | undefi
   return options.sshTunnelPool.openTunnel(
     options.dbServer.sshServerId,
     options.dbServer.database.host,
-    options.dbServer.database.port
+    options.dbServer.database.port,
+    options.connectTimeoutMs
   );
 }
 
@@ -131,10 +149,30 @@ function normalizeMysqlColumns(fields: unknown): string[] {
   });
 }
 
-async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function runConnectStep<T>(connect: () => Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  try {
+    return await runWithTimeout(connect(), timeoutMs, "CONNECT_TIMEOUT", timeoutMessage, 504);
+  } catch (error) {
+    if (error instanceof GatewayError) {
+      throw error;
+    }
+    if (isTimeoutError(error)) {
+      throw new GatewayError("CONNECT_TIMEOUT", timeoutMessage, 504);
+    }
+    throw new GatewayError("DB_CONNECT_FAILED", getErrorMessage(error), 502);
+  }
+}
+
+async function runWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  code: string,
+  message: string,
+  statusCode: number
+): Promise<T> {
   let timeout: NodeJS.Timeout | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => reject(new GatewayError("QUERY_TIMEOUT", "Query timed out", 408)), timeoutMs);
+    timeout = setTimeout(() => reject(new GatewayError(code, message, statusCode)), timeoutMs);
   });
 
   try {
@@ -153,8 +191,35 @@ async function runSqlQuery<T>(query: () => Promise<T>): Promise<T> {
     if (error instanceof GatewayError) {
       throw error;
     }
+    if (isQueryTimeoutError(error)) {
+      throw new GatewayError("QUERY_TIMEOUT", "Database query timed out", 408);
+    }
     throw new GatewayError("QUERY_FAILED", getErrorMessage(error), 400);
   }
+}
+
+function isQueryTimeoutError(error: unknown): boolean {
+  if (isTimeoutError(error)) {
+    return true;
+  }
+  if (error && typeof error === "object" && "code" in error && error.code === "57014") {
+    return true;
+  }
+  return getErrorMessage(error).toLowerCase().includes("statement timeout");
+}
+
+function isTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? error.code : undefined;
+  if (code === "ETIMEDOUT" || code === "PROTOCOL_SEQUENCE_TIMEOUT") {
+    return true;
+  }
+
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes("timeout") || message.includes("timed out");
 }
 
 function getErrorMessage(error: unknown): string {

@@ -2,7 +2,8 @@ export type DatabaseType = "mysql" | "postgres";
 
 export interface DefaultsConfig {
   maxRows: number;
-  timeoutMs: number;
+  queryTimeoutMs: number;
+  connectTimeoutMs: number;
 }
 
 export type ClientDbServerPermission = "read" | "write";
@@ -11,7 +12,7 @@ export interface ClientDbServerGrant {
   serverId: string;
   permission: ClientDbServerPermission;
   maxRows?: number;
-  timeoutMs?: number;
+  queryTimeoutMs?: number;
 }
 
 export interface ClientConfig {
@@ -49,7 +50,8 @@ export interface DbServerConfig {
   id: string;
   type: DatabaseType;
   maxRows?: number;
-  timeoutMs?: number;
+  queryTimeoutMs?: number;
+  connectTimeoutMs?: number;
   database: DatabaseConfig;
   sshServerId?: string;
 }
