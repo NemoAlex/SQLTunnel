@@ -15,13 +15,17 @@ type OpenApiDocument = Record<string, unknown> & {
   servers?: Array<{ url: string }>;
 };
 
+const plainLogger = {
+  info: (message: string) => console.info(message)
+};
+
 export function buildServer(config: GatewayConfig) {
   const app = Fastify({
     logger: true,
     genReqId: () => randomUUID()
   });
   const auth = new AuthService(config);
-  const sshTunnelPool = new SshTunnelPool(config.sshServers);
+  const sshTunnelPool = new SshTunnelPool(config.sshServers, plainLogger);
   const dbServersById = new Map(config.dbServers.map((dbServer) => [dbServer.id, dbServer]));
   const openApiDocument = loadOpenApiDocument();
 
@@ -103,7 +107,7 @@ export function buildServer(config: GatewayConfig) {
       maxRows,
       queryTimeoutMs,
       connectTimeoutMs,
-      logger: request.log
+      logger: plainLogger
     });
 
     if (responseFormat === "raw") {

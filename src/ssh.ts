@@ -9,6 +9,10 @@ export interface Tunnel {
   close: () => void;
 }
 
+interface PlainLogger {
+  info(message: string): void;
+}
+
 const DEFAULT_IDLE_TIMEOUT_MS = 60_000;
 
 interface PoolEntry {
@@ -22,7 +26,7 @@ export class SshTunnelPool {
   private readonly sshServersById: Map<string, SshServerConfig>;
   private readonly entries = new Map<string, PoolEntry>();
 
-  constructor(sshServers: SshServerConfig[]) {
+  constructor(sshServers: SshServerConfig[], private readonly logger?: PlainLogger) {
     this.sshServersById = new Map(sshServers.map((sshServer) => [sshServer.id, sshServer]));
   }
 
@@ -42,10 +46,17 @@ export class SshTunnelPool {
       }
 
       const stream = await openForward(targetClient, host, port, connectTimeoutMs);
+      this.logger?.info(`SSH tunnel opened sshServerId=${sshServer.id} target=${host}:${port}`);
+      let closed = false;
       return {
         stream,
         close: () => {
+          if (closed) {
+            return;
+          }
+          closed = true;
           stream.destroy();
+          this.logger?.info(`SSH tunnel closed sshServerId=${sshServer.id} target=${host}:${port}`);
           this.release(sshServer.id);
         }
       };
