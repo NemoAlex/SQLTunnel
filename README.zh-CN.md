@@ -157,6 +157,15 @@ sshServers:
 - `IdentityFile`
 - `ProxyJump`
 
+SQLTunnel 只实现上面列出的 SSH config 字段。其他 OpenSSH 选项会被忽略，包括：
+
+- `ProxyCommand`
+- `Include`
+- `HostKeyAlias`
+- `LocalForward`
+- `RemoteForward`
+- `DynamicForward`
+
 `host` 如果是 Host alias，会从 SSH config 补齐真实地址、用户、端口、私钥和 ProxyJump。
 
 Docker 环境推荐把 SSH config 放到 `config/ssh/config`，然后在 `gateway.yaml` 中写：

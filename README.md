@@ -158,6 +158,15 @@ Supported SSH config fields:
 - `IdentityFile`
 - `ProxyJump`
 
+SQLTunnel only implements the SSH config fields listed above. Other OpenSSH options are ignored, including:
+
+- `ProxyCommand`
+- `Include`
+- `HostKeyAlias`
+- `LocalForward`
+- `RemoteForward`
+- `DynamicForward`
+
 When `host` is a Host alias, SQLTunnel can fill in the real host, user, port, private key, and ProxyJump from SSH config.
 
 Docker-friendly SSH config example:
