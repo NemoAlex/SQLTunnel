@@ -2,6 +2,7 @@ import fs from "node:fs";
 import type { Socket } from "node:net";
 import { Client } from "ssh2";
 import { GatewayError } from "./errors.js";
+import { formatSshTunnelClosedLog, formatSshTunnelOpenedLog } from "./log-format.js";
 import type { SshConfig, SshServerConfig } from "./types.js";
 
 export interface Tunnel {
@@ -105,7 +106,7 @@ export class SshTunnelPool {
         `Timed out while establishing SSH tunnel ${sshServer.id}`
       );
       entry.connecting = undefined;
-      this.logger?.info(`SSH tunnel opened sshServerId=${sshServer.id}`);
+      this.logger?.info(formatSshTunnelOpenedLog(sshServer.id));
       for (const client of entry.clients) {
         client.once("close", () => {
           if (this.entries.get(sshServer.id) === entry) {
@@ -146,7 +147,7 @@ export class SshTunnelPool {
       clearTimeout(entry.idleTimer);
     }
     this.entries.delete(sshServerId);
-    this.logger?.info(`SSH tunnel closed sshServerId=${sshServerId}`);
+    this.logger?.info(formatSshTunnelClosedLog(sshServerId));
     for (const client of [...entry.clients].reverse()) {
       client.end();
     }

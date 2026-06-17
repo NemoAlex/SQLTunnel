@@ -1,6 +1,7 @@
 import mysql from "mysql2/promise";
 import pg from "pg";
 import { GatewayError } from "./errors.js";
+import { formatSqlLog } from "./log-format.js";
 import type { SshTunnelPool, Tunnel } from "./ssh.js";
 import { withRowLimit } from "./sql.js";
 import type { DbServerConfig, QueryResult } from "./types.js";
@@ -26,7 +27,7 @@ export interface ExecuteQueryOptions {
 export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryResult> {
   const started = Date.now();
   const limitedSql = withRowLimit(options.sql, options.maxRows);
-  options.logger?.info(`${options.dbServer.id} ${limitedSql}`);
+  options.logger?.info(formatSqlLog(options.dbServer.id, limitedSql));
 
   if (options.dbServer.type === "mysql") {
     const result = await runMysql(options, limitedSql);
