@@ -8,6 +8,10 @@ import type { DbServerConfig, QueryResult } from "./types.js";
 pg.types.setTypeParser(114, (value) => value);
 pg.types.setTypeParser(3802, (value) => value);
 
+interface QueryLogger {
+  info(bindings: Record<string, unknown>, message: string): void;
+}
+
 export interface ExecuteQueryOptions {
   dbServer: DbServerConfig;
   sshTunnelPool: SshTunnelPool;
@@ -16,11 +20,16 @@ export interface ExecuteQueryOptions {
   maxRows: number;
   queryTimeoutMs: number;
   connectTimeoutMs: number;
+  logger?: QueryLogger;
 }
 
 export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryResult> {
   const started = Date.now();
   const limitedSql = withRowLimit(options.sql, options.maxRows);
+  options.logger?.info({
+    dbServerId: options.dbServer.id,
+    sql: limitedSql
+  }, "executing SQL query");
 
   if (options.dbServer.type === "mysql") {
     const result = await runMysql(options, limitedSql);

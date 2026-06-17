@@ -102,7 +102,8 @@ export function buildServer(config: GatewayConfig) {
       params,
       maxRows,
       queryTimeoutMs,
-      connectTimeoutMs
+      connectTimeoutMs,
+      logger: request.log
     });
 
     if (responseFormat === "raw") {
