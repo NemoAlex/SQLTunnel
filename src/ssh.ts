@@ -46,7 +46,6 @@ export class SshTunnelPool {
       }
 
       const stream = await openForward(targetClient, host, port, connectTimeoutMs);
-      this.logger?.info(`SSH tunnel opened sshServerId=${sshServer.id} target=${host}:${port}`);
       let closed = false;
       return {
         stream,
@@ -56,7 +55,6 @@ export class SshTunnelPool {
           }
           closed = true;
           stream.destroy();
-          this.logger?.info(`SSH tunnel closed sshServerId=${sshServer.id} target=${host}:${port}`);
           this.release(sshServer.id);
         }
       };
@@ -107,6 +105,7 @@ export class SshTunnelPool {
         `Timed out while establishing SSH tunnel ${sshServer.id}`
       );
       entry.connecting = undefined;
+      this.logger?.info(`SSH tunnel opened sshServerId=${sshServer.id}`);
       for (const client of entry.clients) {
         client.once("close", () => {
           if (this.entries.get(sshServer.id) === entry) {
@@ -147,6 +146,7 @@ export class SshTunnelPool {
       clearTimeout(entry.idleTimer);
     }
     this.entries.delete(sshServerId);
+    this.logger?.info(`SSH tunnel closed sshServerId=${sshServerId}`);
     for (const client of [...entry.clients].reverse()) {
       client.end();
     }

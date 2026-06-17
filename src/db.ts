@@ -26,7 +26,7 @@ export interface ExecuteQueryOptions {
 export async function executeQuery(options: ExecuteQueryOptions): Promise<QueryResult> {
   const started = Date.now();
   const limitedSql = withRowLimit(options.sql, options.maxRows);
-  options.logger?.info(`SQL dbServerId=${options.dbServer.id} ${limitedSql}`);
+  options.logger?.info(`${options.dbServer.id} ${limitedSql}`);
 
   if (options.dbServer.type === "mysql") {
     const result = await runMysql(options, limitedSql);
