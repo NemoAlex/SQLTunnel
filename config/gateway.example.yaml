@@ -39,11 +39,10 @@ clients: # Required. API clients and their per-db-server permissions.
     apiKey: dev-read-key # Required. Sent by callers in X-SQLTunnel-API-Key header.
     dbServers:
       - serverId: prod-postgres
-        permission: read # Required. read or write.
+        permission: read # Optional. read or write. Defaults to read.
         maxRows: 500 # Optional. Further restricts this client for this db server.
         queryTimeoutMs: 5000 # Optional. Further restricts this client for this db server.
       - serverId: reporting-mysql
-        permission: read
 
   - id: admin-tool
     apiKey: dev-write-key
@@ -53,4 +52,3 @@ clients: # Required. API clients and their per-db-server permissions.
         maxRows: 100
         queryTimeoutMs: 3000
       - serverId: reporting-mysql
-        permission: read

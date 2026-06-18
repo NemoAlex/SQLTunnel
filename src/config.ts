@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
 import { GatewayError } from "./errors.js";
-import type { GatewayConfig, SshConfig, SshServerConfig } from "./types.js";
+import type { ClientConfig, GatewayConfig, SshConfig, SshServerConfig } from "./types.js";
 
 const DEFAULT_CONFIG_PATH = "config/gateway.yaml";
 const DEFAULT_SSH_PORT = 22;
@@ -42,12 +42,22 @@ export function loadConfig(configPath = process.env.SQLTUNNEL_CONFIG ?? DEFAULT_
       connectTimeoutMs: parsed.defaults?.connectTimeoutMs ?? 10000
     },
     sshServers: normalizeSshServers(parsed.sshServers ?? [], configDir),
-    clients: parsed.clients ?? [],
+    clients: normalizeClients(parsed.clients ?? []),
     dbServers: parsed.dbServers ?? []
   };
 
   validateConfig(config);
   return config;
+}
+
+function normalizeClients(clients: ClientConfig[]): ClientConfig[] {
+  return clients.map((client) => ({
+    ...client,
+    dbServers: client.dbServers?.map((grant) => ({
+      ...grant,
+      permission: grant.permission ?? "read"
+    })) ?? []
+  }));
 }
 
 function validateConfig(config: GatewayConfig) {

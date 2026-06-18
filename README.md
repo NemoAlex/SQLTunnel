@@ -291,7 +291,6 @@ clients:
         maxRows: 500
         queryTimeoutMs: 5000
       - serverId: reporting-mysql
-        permission: read
 ```
 
 Fields:
@@ -300,7 +299,7 @@ Fields:
 - `apiKey`: Required. API key sent by the caller in the `X-SQLTunnel-API-Key` header.
 - `dbServers`: Required. List of db servers this client can access.
 - `dbServers[].serverId`: Required. References `dbServers[].id`.
-- `dbServers[].permission`: Required. Permission: `read` or `write`. `read` allows read-only SQL; `write` allows write SQL.
+- `dbServers[].permission`: Optional. Permission: `read` or `write`. Defaults to `read`. `read` allows read-only SQL; `write` allows both read and write SQL.
 - `dbServers[].maxRows`: Optional. Max rows for this client on this db server. If omitted, db server or global defaults are used.
 - `dbServers[].queryTimeoutMs`: Optional. Query timeout for this client on this db server. If omitted, db server or global defaults are used.
 
@@ -427,7 +426,7 @@ Response fields:
 Permissions and limits:
 
 - `permission: read` allows read-only SQL such as `select`, `with`, `show`, `describe`, and `explain`.
-- `permission: write` allows write SQL.
+- `permission: write` allows both read and write SQL.
 - Multi-statement SQL is treated as non-read-only SQL.
 - Queries always enforce `maxRows` and `queryTimeoutMs`.
 - SSH tunnel setup and database connection use `connectTimeoutMs`; SQL execution uses `queryTimeoutMs`.

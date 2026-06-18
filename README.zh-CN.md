@@ -291,7 +291,6 @@ clients:
         maxRows: 500
         queryTimeoutMs: 5000
       - serverId: reporting-mysql
-        permission: read
 ```
 
 字段说明：
@@ -300,7 +299,7 @@ clients:
 - `apiKey`：必填。调用方请求 SQLTunnel 时使用的 API key，放在 `X-SQLTunnel-API-Key` header 中。
 - `dbServers`：必填。该 client 可以访问的 db server 列表。
 - `dbServers[].serverId`：必填。引用 `dbServers[].id`。
-- `dbServers[].permission`：必填。权限，支持 `read` 或 `write`。`read` 只允许只读 SQL；`write` 允许写入 SQL。
+- `dbServers[].permission`：可选。权限，支持 `read` 或 `write`，默认 `read`。`read` 只允许只读 SQL；`write` 允许读写 SQL。
 - `dbServers[].maxRows`：可选。该 client 访问该 db server 时的最大返回行数；未配置时使用 db server 或全局默认值。
 - `dbServers[].queryTimeoutMs`：可选。该 client 访问该 db server 时的查询超时时间；未配置时使用 db server 或全局默认值。
 
@@ -429,7 +428,7 @@ clients:
 权限和限制：
 
 - `permission: read` 只允许只读 SQL，例如 `select`、`with`、`show`、`describe`、`explain`。
-- `permission: write` 允许写 SQL。
+- `permission: write` 允许读写 SQL。
 - 多语句 SQL 会被当作非只读 SQL 处理。
 - 查询会强制套用 `maxRows` 和 `queryTimeoutMs`。
 - SSH tunnel 建立和数据库连接使用 `connectTimeoutMs`；SQL 执行使用 `queryTimeoutMs`。
