@@ -7,7 +7,7 @@
 
 SQLTunnel 是一个数据库访问网关，用来让外部应用安全地查询只有内网才能访问的数据库。
 
-它的主要使用场景是：数据库位于内网或只能通过跳板机访问，但 Dify、AI Agent、自动化平台、内部工具等应用需要按权限执行查询。SQLTunnel 部署在能访问数据库或跳板机的环境中，对外提供受控 API；外部应用只需要调用 SQLTunnel，不需要直接暴露数据库端口。
+它的主要使用场景是：数据库位于内网或只能通过跳板机访问，但 Dify、AI Agent、自动化平台、内部工具等应用需要按权限执行查询。常见的部署方式是把 SQLTunnel 和外部应用放在一起，由 SQLTunnel 通过 SSH 隧道访问私有环境中的数据库；也可以把 SQLTunnel 部署在私有网络内并直连数据库。无论哪种方式，都不需要把数据库端口直接暴露给外部应用。
 
 SQLTunnel 特别适合给 Dify 等 AI 工具提供数据库查询能力：
 
@@ -25,31 +25,20 @@ SQLTunnel 特别适合给 Dify 等 AI 工具提供数据库查询能力：
 
 ```mermaid
 flowchart LR
-  subgraph Clients[" "]
+  subgraph AppSide["外部环境"]
     direction TB
-    ClientsTitle["外部环境"]
     ExternalApp["外部软件，例如 Dify 或其他 AI Agent"]
-  end
-
-  subgraph Gateway[" "]
-    direction TB
-    GatewayTitle["可访问私有环境的部署位置"]
     SQLTunnel["SQLTunnel HTTP API"]
     Secrets["数据库密码 / SSH 私钥只存储在这里，不对外暴露"]
   end
 
-  subgraph Private[" "]
+  subgraph Private["私有环境"]
     direction TB
-    PrivateTitle["私有环境"]
     Database[("内网数据库，例如 MySQL 或 PostgreSQL")]
   end
 
   ExternalApp -->|"HTTP API /query"| SQLTunnel
-  SQLTunnel -->|"直连或通过 SSH tunnel"| Database
-
-  style ClientsTitle fill:transparent,stroke:transparent,font-weight:bold
-  style GatewayTitle fill:transparent,stroke:transparent,font-weight:bold
-  style PrivateTitle fill:transparent,stroke:transparent,font-weight:bold
+  SQLTunnel -->|"SSH tunnel 或直连"| Database
 ```
 
 SQLTunnel 的配置文件声明三类对象：
@@ -59,16 +48,6 @@ SQLTunnel 的配置文件声明三类对象：
 - `clients`：外部调用方，以及它能访问哪些 db servers。
 
 外部应用不会看到数据库真实密码或 SSH 私钥，只会拿到自己的 API key 和允许使用的 db server id。
-
-## 适用场景
-
-SQLTunnel 适合这些场景：
-
-- Dify 或其他 AI 工具需要查询内网数据库。
-- 数据库不能直接暴露公网端口，只能通过跳板机或 SSH config 访问。
-- 多个外部应用需要共享同一批数据库访问入口，但权限各不相同。
-- 希望把数据库账号、SSH 私钥、跳板机细节集中放在服务端配置中。
-- 希望对 AI 生成 SQL 设置统一的只读权限、行数限制和超时限制。
 
 SQLTunnel 不负责生成 SQL，也不替代数据库审计系统。它的职责是把已经授权的查询请求转发到正确的 db server，并执行基础的权限和安全限制。
 

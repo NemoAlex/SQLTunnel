@@ -7,7 +7,7 @@
 
 SQLTunnel is a database access gateway for external applications that need to query databases reachable only from private networks.
 
-It is designed for cases where databases live behind a firewall, inside a VPC, or behind a bastion host, while tools such as Dify, AI agents, automation platforms, or internal apps need controlled query access. SQLTunnel runs in an environment that can reach the database or SSH bastion, and exposes a small API to authorized clients. The database port does not need to be exposed directly.
+It is designed for cases where databases live behind a firewall, inside a VPC, or behind a bastion host, while tools such as Dify, AI agents, automation platforms, or internal apps need controlled query access. SQLTunnel is often deployed next to the external application and reaches the private database through an SSH tunnel. It can also be deployed inside the private network and connect to the database directly. In either setup, the database port does not need to be exposed to the external application.
 
 SQLTunnel is especially useful for giving AI tools database query access:
 
@@ -25,31 +25,20 @@ Typical request path:
 
 ```mermaid
 flowchart LR
-  subgraph Clients[" "]
+  subgraph AppSide["External environment"]
     direction TB
-    ClientsTitle["External environment"]
     ExternalApp["External software, such as Dify or another AI Agent"]
-  end
-
-  subgraph Gateway[" "]
-    direction TB
-    GatewayTitle["Deployment with private-network access"]
     SQLTunnel["SQLTunnel HTTP API"]
     Secrets["Database passwords / SSH private keys stay here and are not exposed"]
   end
 
-  subgraph Private[" "]
+  subgraph Private["Private environment"]
     direction TB
-    PrivateTitle["Private environment"]
     Database[("Private database, such as MySQL or PostgreSQL")]
   end
 
   ExternalApp -->|"HTTP API /query"| SQLTunnel
-  SQLTunnel -->|"direct connection or SSH tunnel"| Database
-
-  style ClientsTitle fill:transparent,stroke:transparent,font-weight:bold
-  style GatewayTitle fill:transparent,stroke:transparent,font-weight:bold
-  style PrivateTitle fill:transparent,stroke:transparent,font-weight:bold
+  SQLTunnel -->|"SSH tunnel or direct connection"| Database
 ```
 
 The configuration file defines three main objects:
@@ -59,16 +48,6 @@ The configuration file defines three main objects:
 - `clients`: external callers and the db servers they are allowed to use.
 
 External applications do not see database passwords or SSH private keys. They only receive their own API key and the db server ids they are allowed to query.
-
-## Use Cases
-
-SQLTunnel fits these scenarios:
-
-- Dify or another AI tool needs to query a private database.
-- A database must not expose a public port and is reachable only through a bastion host or SSH config.
-- Multiple external applications need the same database access gateway with different permissions.
-- Database credentials, SSH private keys, and bastion details should stay in server-side configuration.
-- AI-generated SQL should be constrained by read/write permission, row limits, and timeouts.
 
 SQLTunnel does not generate SQL and does not replace database auditing. Its role is to forward authorized query requests to the correct db server and enforce basic access controls.
 
