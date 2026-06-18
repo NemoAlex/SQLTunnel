@@ -97,7 +97,6 @@ SQLTunnel 已发布到 Docker Hub，镜像名为 `nemoalex/sqltunnel`：
 
 ```bash
 docker pull nemoalex/sqltunnel:1.0.0
-docker pull nemoalex/sqltunnel:latest
 ```
 
 创建一个使用 Docker Hub 镜像的 Compose 文件：

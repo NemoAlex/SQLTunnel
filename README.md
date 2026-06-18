@@ -97,7 +97,6 @@ SQLTunnel is published on Docker Hub as `nemoalex/sqltunnel`:
 
 ```bash
 docker pull nemoalex/sqltunnel:1.0.0
-docker pull nemoalex/sqltunnel:latest
 ```
 
 Create a Compose file that uses the Docker Hub image:
