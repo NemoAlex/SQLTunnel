@@ -1,5 +1,8 @@
 # SQLTunnel
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/nemoalex/sqltunnel?logo=docker&label=Docker%20Pulls)](https://hub.docker.com/r/nemoalex/sqltunnel)
+[![Docker Image Version](https://img.shields.io/docker/v/nemoalex/sqltunnel?logo=docker&label=Docker%20Image)](https://hub.docker.com/r/nemoalex/sqltunnel/tags)
+
 [English](README.md)
 
 SQLTunnel 是一个数据库访问网关，用来让外部应用安全地查询只有内网才能访问的数据库。
@@ -71,36 +74,81 @@ SQLTunnel 不负责生成 SQL，也不替代数据库审计系统。它的职责
 
 ## 快速开始
 
+### 直接运行
+
 ```bash
-npm install
+git clone https://github.com/NemoAlex/SQLTunnel.git
+cd SQLTunnel
 cp config/gateway.example.yaml config/gateway.yaml
-npm run dev
+npm install
+npm run build
+npm run start
 ```
 
 服务默认监听 `0.0.0.0:3000`，可通过环境变量覆盖：
 
 ```bash
-FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run dev
+FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```
 
-## Docker Compose
+### Docker Compose
+
+SQLTunnel 已发布到 Docker Hub，镜像名为 `nemoalex/sqltunnel`：
+
+```bash
+docker pull nemoalex/sqltunnel:1.0.0
+docker pull nemoalex/sqltunnel:latest
+```
+
+创建一个使用 Docker Hub 镜像的 Compose 文件：
+
+```yaml
+services:
+  sqltunnel:
+    image: nemoalex/sqltunnel:1.0.0
+    container_name: sqltunnel
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config:ro
+```
+
+然后启动：
 
 ```bash
 cp config/gateway.example.yaml config/gateway.yaml
+docker compose up -d
+```
+
+仓库自带的 `compose.yaml` 用于本地开发，会从本地 `Dockerfile` 构建 `sqltunnel:local`：
+
+```bash
 docker compose up --build
 ```
 
-`compose.yaml` 的默认设置：
+### config 目录
 
-- 服务名是 `sqltunnel`。
-- 使用当前目录的 `Dockerfile` 构建镜像，镜像名为 `sqltunnel:local`。
-- 容器名固定为 `sqltunnel`。
-- 重启策略是 `unless-stopped`。
-- 将宿主机 `3000` 端口映射到容器 `3000` 端口。
-- 将本地 `./config` 只读挂载到容器内的 `/app/config`。
-- 不额外指定配置文件环境变量，服务默认读取 `/app/config/gateway.yaml`。
+推荐目录结构：
 
-如果需要在 Docker 环境中使用 SSH config，建议把 SSH config 和私钥放在 `config/ssh/` 下，并在 `gateway.yaml` 中使用相对路径，例如 `sshConfigPath: ssh/config`、`privateKeyPath: ssh/id_rsa`。`config` 目录会整体挂载进容器，路径会基于 `gateway.yaml` 所在目录解析。
+```text
+config/
+  gateway.yaml
+  gateway.example.yaml
+  ssh/                 # 可选。
+    config             # 可选。用于写 SSH Host alias、用户、端口、ProxyJump 等登录信息。
+    id_rsa             # 可选。私钥文件，只有使用密钥登录 SSH 时才需要。
+```
+
+推荐配置方式：
+
+- 复制 `config/gateway.example.yaml` 为 `config/gateway.yaml`，再按实际环境修改。
+- 只有当你希望 SQLTunnel 从挂载的配置目录读取 SSH 文件时，才需要使用 `config/ssh/`。
+- 只有 SSH 服务器要求密钥登录时，才需要把 `id_rsa` 这类私钥放在 `config/ssh/` 下。
+- 如果希望集中描述 SSH 登录信息，例如 Host alias、端口、用户、IdentityFile 或 ProxyJump，可以把 SSH config 放在 `config/ssh/config`。
+- 在 `gateway.yaml` 中使用相对路径引用 SSH 文件，例如 `sshConfigPath: ssh/config`、`privateKeyPath: ssh/id_rsa`。
+- 将整个 `config` 目录挂载到容器内的 `/app/config`；默认配置路径会对应为 `/app/config/gateway.yaml`。
+- API key、数据库密码、SSH 私钥等敏感信息放在 `config/gateway.yaml` 或 `config/ssh/` 文件中；外部调用方只需要拿到自己的 API key。
 
 ## 配置
 
