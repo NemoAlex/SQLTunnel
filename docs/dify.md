@@ -1,6 +1,6 @@
-# Configure SQLTunnel in Dify
+# SQLTunnel Dify Setup Guide
 
-[Chinese](dify.zh-CN.md)
+[Back to README](../README.md) | [Configuration reference](configuration.md) | [API reference](api.md)
 
 This guide focuses on the Dify-side setup for calling SQLTunnel. On the SQLTunnel side, prepare:
 

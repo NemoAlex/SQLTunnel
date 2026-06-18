@@ -1,6 +1,6 @@
-# Dify 端配置 SQLTunnel
+# SQLTunnel Dify 配置指南
 
-[English](dify.md)
+[返回 README](../README.zh-CN.md) | [配置参考](configuration.zh-CN.md) | [API 参考](api.zh-CN.md)
 
 本文只说明 Dify 端如何配置和调用 SQLTunnel。SQLTunnel 侧只需要提前准备好：
 
