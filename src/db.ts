@@ -1,4 +1,5 @@
 import mysql from "mysql2/promise";
+import type { Socket } from "node:net";
 import pg from "pg";
 import { GatewayError } from "./errors.js";
 import { formatSqlLog } from "./log-format.js";
@@ -91,6 +92,7 @@ async function runMysql(options: ExecuteQueryOptions, sql: string) {
 
 async function runPostgres(options: ExecuteQueryOptions, sql: string) {
   const tunnel = await openTunnel(options);
+  const stream = tunnel ? asConnectedPostgresStream(tunnel.stream) : undefined;
   const client = new pg.Client({
     host: tunnel ? undefined : options.dbServer.database.host,
     port: tunnel ? undefined : options.dbServer.database.port,
@@ -100,7 +102,7 @@ async function runPostgres(options: ExecuteQueryOptions, sql: string) {
     statement_timeout: options.queryTimeoutMs,
     query_timeout: options.queryTimeoutMs,
     connectionTimeoutMillis: options.connectTimeoutMs,
-    stream: tunnel ? () => tunnel.stream : undefined
+    stream: stream ? () => stream : undefined
   });
 
   try {
@@ -122,6 +124,24 @@ async function runPostgres(options: ExecuteQueryOptions, sql: string) {
     await client.end().catch(() => undefined);
     tunnel?.close();
   }
+}
+
+function asConnectedPostgresStream(stream: Socket): Socket {
+  const postgresStream = stream as Socket & {
+    connect: (port?: number, host?: string) => Socket;
+    setNoDelay: (noDelay?: boolean) => Socket;
+    setKeepAlive: (enable?: boolean, initialDelay?: number) => Socket;
+  };
+
+  // node-postgres expects a net.Socket and waits for connect; ssh2 channels are already connected.
+  postgresStream.connect = () => {
+    queueMicrotask(() => postgresStream.emit("connect"));
+    return postgresStream;
+  };
+  postgresStream.setNoDelay = () => postgresStream;
+  postgresStream.setKeepAlive = () => postgresStream;
+
+  return postgresStream;
 }
 
 async function openTunnel(options: ExecuteQueryOptions): Promise<Tunnel | undefined> {
