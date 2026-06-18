@@ -26,11 +26,16 @@ SQLTunnel 特别适合给 Dify 等 AI 工具提供数据库查询能力：
 ```mermaid
 flowchart LR
   ExternalApp["外部应用<br/>Dify、AI Agent、内部工具"]
-  SQLTunnel["SQLTunnel HTTP API<br/>保存数据库密码和 SSH 私钥"]
+  SQLTunnel["SQLTunnel<br/>保存数据库密码和 SSH 私钥"]
   Database[("私有数据库<br/>MySQL 或 PostgreSQL")]
+  Padding[" "]
 
   ExternalApp -->|"HTTP API /query"| SQLTunnel
   SQLTunnel -->|"SSH tunnel 或直连"| Database
+  Database ~~~ Padding
+
+  style Padding fill:transparent,stroke:transparent
+  linkStyle 2 stroke:transparent
 ```
 
 SQLTunnel 的配置文件声明三类对象：

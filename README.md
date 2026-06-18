@@ -26,11 +26,16 @@ Typical request path:
 ```mermaid
 flowchart LR
   ExternalApp["External app<br/>Dify, AI Agent, internal apps"]
-  SQLTunnel["SQLTunnel HTTP API<br/>keeps database passwords and SSH private keys"]
+  SQLTunnel["SQLTunnel<br/>keeps database passwords and SSH private keys"]
   Database[("Private database<br/>MySQL or PostgreSQL")]
+  Padding[" "]
 
   ExternalApp -->|"HTTP API /query"| SQLTunnel
   SQLTunnel -->|"SSH tunnel or direct connection"| Database
+  Database ~~~ Padding
+
+  style Padding fill:transparent,stroke:transparent
+  linkStyle 2 stroke:transparent
 ```
 
 The configuration file defines three main objects:
