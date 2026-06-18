@@ -1,6 +1,6 @@
 {
   "name": "sqltunnel",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Node.js/TypeScript database connection gateway with optional SSH tunneling.",
   "type": "module",
