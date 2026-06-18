@@ -25,17 +25,9 @@ SQLTunnel 特别适合给 Dify 等 AI 工具提供数据库查询能力：
 
 ```mermaid
 flowchart LR
-  subgraph AppSide["外部环境"]
-    direction TB
-    ExternalApp["外部软件，例如 Dify 或其他 AI Agent"]
-    SQLTunnel["SQLTunnel HTTP API"]
-    Secrets["数据库密码 / SSH 私钥只存储在这里，不对外暴露"]
-  end
-
-  subgraph Private["私有环境"]
-    direction TB
-    Database[("内网数据库，例如 MySQL 或 PostgreSQL")]
-  end
+  ExternalApp["外部应用<br/>Dify、AI Agent、内部工具"]
+  SQLTunnel["SQLTunnel HTTP API<br/>保存数据库密码和 SSH 私钥"]
+  Database[("私有数据库<br/>MySQL 或 PostgreSQL")]
 
   ExternalApp -->|"HTTP API /query"| SQLTunnel
   SQLTunnel -->|"SSH tunnel 或直连"| Database

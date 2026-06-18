@@ -25,17 +25,9 @@ Typical request path:
 
 ```mermaid
 flowchart LR
-  subgraph AppSide["External environment"]
-    direction TB
-    ExternalApp["External software, such as Dify or another AI Agent"]
-    SQLTunnel["SQLTunnel HTTP API"]
-    Secrets["Database passwords / SSH private keys stay here and are not exposed"]
-  end
-
-  subgraph Private["Private environment"]
-    direction TB
-    Database[("Private database, such as MySQL or PostgreSQL")]
-  end
+  ExternalApp["External app<br/>Dify, AI Agent, internal apps"]
+  SQLTunnel["SQLTunnel HTTP API<br/>keeps database passwords and SSH private keys"]
+  Database[("Private database<br/>MySQL or PostgreSQL")]
 
   ExternalApp -->|"HTTP API /query"| SQLTunnel
   SQLTunnel -->|"SSH tunnel or direct connection"| Database
