@@ -1,0 +1,34 @@
+version: 1
+
+defaults:
+  timezone: Asia/Shanghai
+  outputDir: ../backups
+  binaries:
+    pgDump: pg_dump
+    mySqlDump: mysqldump
+  retention:
+    latest: 1
+    previous: 1
+    daily: 7
+    weekly: 4
+    monthly: 3
+
+jobs:
+  - id: prod-postgres-daily
+    enabled: true
+    dbServerId: prod-postgres
+    schedule: "0 3 * * *"
+    outputDir: ../backups/prod-postgres
+    dumpOptions:
+      - "--no-owner"
+
+  - id: reporting-mysql-daily
+    enabled: true
+    dbServerId: reporting-mysql
+    schedule: "30 3 * * *"
+    outputDir: ../backups/reporting-mysql
+    dumpOptions:
+      - "--single-transaction"
+      - "--routines"
+      - "--triggers"
+      - "--events"

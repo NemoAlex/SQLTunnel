@@ -125,8 +125,37 @@ config/
 - 将整个 `config` 目录挂载到容器内的 `/app/config`；默认配置路径会对应为 `/app/config/gateway.yaml`。
 - API key、数据库密码、SSH 私钥等敏感信息放在 `config/gateway.yaml` 或 `config/ssh/` 文件中；外部调用方只需要拿到自己的 API key。
 
+## 备份功能
+
+备份是可选功能。没有 `config/backup.yaml` 时，SQLTunnel 只作为查询网关运行。
+
+```bash
+cp config/backup.example.yaml config/backup.yaml
+npm run build
+node dist/cli.js backup list
+node dist/cli.js backup run --job prod-postgres-daily
+```
+
+`backup.yaml` 只写调度和保留策略；数据库和 SSH 配置仍来自 `gateway.yaml`。备份使用 PostgreSQL 的 `pg_dump` 和 MySQL 的 `mysqldump`，也可以指定工具路径：
+
+```yaml
+defaults:
+  binaries:
+    pgDump: /usr/local/bin/pg_dump
+    mySqlDump: /usr/local/bin/mysqldump
+```
+
+Docker 镜像内置两个 dump 工具。启用备份时挂载可写目录：
+
+```yaml
+volumes:
+  - ./config:/app/config:ro
+  - ./backups:/app/backups
+```
+
 ## 参考文档
 
+- [备份功能](#备份功能)
 - [配置参考](docs/configuration.zh-CN.md)
 - [API 参考](docs/api.zh-CN.md)
 - [Dify 配置指南](docs/dify.zh-CN.md)

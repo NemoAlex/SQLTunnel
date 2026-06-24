@@ -4,10 +4,14 @@
   "private": true,
   "description": "Node.js/TypeScript database connection gateway with optional SSH tunneling.",
   "type": "module",
+  "bin": {
+    "sqltunnel": "dist/cli.js"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "backup": "tsx src/cli.ts backup",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

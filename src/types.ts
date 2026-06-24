@@ -82,3 +82,40 @@ export interface QueryResult {
   durationMs: number;
   dbServerId: string;
 }
+
+export interface BackupRetentionConfig {
+  latest: number;
+  previous: number;
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
+
+export interface BackupBinariesConfig {
+  pgDump: string;
+  mySqlDump: string;
+}
+
+export interface BackupDefaultsConfig {
+  timezone: string;
+  outputDir: string;
+  binaries: BackupBinariesConfig;
+  retention: BackupRetentionConfig;
+}
+
+export interface BackupJobConfig {
+  id: string;
+  enabled: boolean;
+  dbServerId: string;
+  schedule: string;
+  outputDir: string;
+  retention: BackupRetentionConfig;
+  dumpOptions: string[];
+}
+
+export interface BackupConfig {
+  version: 1;
+  defaults: BackupDefaultsConfig;
+  jobs: BackupJobConfig[];
+  configured: boolean;
+}
