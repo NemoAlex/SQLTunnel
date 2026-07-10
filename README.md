@@ -3,51 +3,37 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/nemoalex/sqltunnel?logo=docker&label=Docker%20Pulls)](https://hub.docker.com/r/nemoalex/sqltunnel)
 [![Docker Image Version](https://img.shields.io/docker/v/nemoalex/sqltunnel?logo=docker&label=Docker%20Image)](https://hub.docker.com/r/nemoalex/sqltunnel/tags)
 
-[Chinese](README.zh-CN.md)
+[English](README.md) | [中文](README.zh-CN.md) | [日本語](docs/readme/README.ja.md) | [한국어](docs/readme/README.ko.md) | [Français](docs/readme/README.fr.md) | [Deutsch](docs/readme/README.de.md)
 
-SQLTunnel is a database access gateway for external applications that need to query databases reachable only from private networks.
+SQLTunnel is a database access gateway that lets agents such as Codex, Claude Code, and Hermes, as well as Dify, automation platforms, and internal applications, query private databases with controlled permissions without exposing database ports directly.
 
-It is designed for cases where databases live behind a firewall, inside a VPC, or behind a bastion host, while tools such as Dify, AI agents, automation platforms, or internal apps need controlled query access. SQLTunnel is often deployed next to the external application and reaches the private database through an SSH tunnel. It can also be deployed inside the private network and connect to the database directly. In either setup, the database port does not need to be exposed to the external application.
+Key capabilities:
 
-SQLTunnel is especially useful for giving AI tools database query access:
-
-- Identify callers with API keys.
-- Authorize each client for specific db servers only.
-- Configure read or write permission per client and per db server.
-- Reach private databases through SSH tunnels.
-- Read SSH config, including Host aliases and ProxyJump.
-- Provide both an OpenAPI HTTP API and a Streamable HTTP MCP endpoint.
-- Enforce query row limits and timeouts.
-- Default to read-oriented access; writes require explicit permission.
+- Supports MySQL and PostgreSQL through direct connections or SSH tunnels.
+- Identifies callers with API keys and configures read/write access per client and db server.
+- Supports SSH config, Host aliases, and ProxyJump.
+- Provides an OpenAPI HTTP API and a Streamable HTTP MCP endpoint.
+- Enforces row limits and timeouts; writes require explicit permission.
 
 ## How It Works
 
-Typical request path:
-
 ```mermaid
 flowchart LR
-  ExternalApp["External app<br/>Dify, AI Agent, internal apps"]
-  SQLTunnel["SQLTunnel<br/>keeps database passwords and SSH private keys"]
+  ExternalApp["External applications<br/>Agents, AI platforms, internal tools"]
+  SQLTunnel["SQLTunnel<br/>Access control and connection management"]
   Database[("Private database<br/>MySQL or PostgreSQL")]
-  Padding[" "]
 
-  ExternalApp -->|"HTTP API /query or MCP /mcp"| SQLTunnel
+  ExternalApp -->|"HTTP API or MCP"| SQLTunnel
   SQLTunnel -->|"SSH tunnel or direct connection"| Database
-  Database ~~~ Padding
-
-  style Padding fill:transparent,stroke:transparent
-  linkStyle 2 stroke:transparent
 ```
 
-The configuration file defines three main objects:
+`gateway.yaml` contains three types of configuration:
 
-- `dbServers`: databases that SQLTunnel can access.
-- `sshServers`: reusable SSH tunnel entries, optionally backed by SSH config.
-- `clients`: external callers and the db servers they are allowed to use.
+- `dbServers`: database connection details.
+- `sshServers`: reusable SSH connections.
+- `clients`: external callers and their database permissions.
 
-External applications do not see database passwords or SSH private keys. They only receive their own API key and the db server ids they are allowed to query.
-
-SQLTunnel does not generate SQL and does not replace database auditing. Its role is to forward authorized query requests to the correct db server and enforce basic access controls.
+Database passwords and SSH private keys remain on the SQLTunnel server. External callers only need their own API key.
 
 ## Quick Start
 
@@ -62,21 +48,13 @@ npm run build
 npm run start
 ```
 
-The service listens on `0.0.0.0:3000` by default. Override host and port with environment variables:
+The service listens on `0.0.0.0:3000` by default. Override it with environment variables:
 
 ```bash
 FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```
 
 ### Docker Compose
-
-SQLTunnel is published on Docker Hub as `nemoalex/sqltunnel`:
-
-```bash
-docker pull nemoalex/sqltunnel:1.0.0
-```
-
-Create a Compose file that uses the Docker Hub image:
 
 ```yaml
 services:
@@ -90,67 +68,51 @@ services:
       - ./config:/app/config:ro
 ```
 
-Then start it:
-
 ```bash
 cp config/gateway.example.yaml config/gateway.yaml
 docker compose up -d
 ```
 
-The repository's `compose.yaml` is intended for local development and builds `sqltunnel:local` from the local `Dockerfile`:
+The repository's `compose.yaml` builds the image locally:
 
 ```bash
 docker compose up --build
 ```
 
-### Config Directory
-
-Recommended structure:
+## Config Directory
 
 ```text
 config/
   gateway.yaml
   gateway.example.yaml
-  ssh/                 # Optional.
-    config             # Optional. SSH Host aliases, users, ports, ProxyJump, and other login details.
-    id_rsa             # Optional. Private key, only needed when you use key-based SSH login.
+  ssh/                 # Optional
+    config             # Optional: SSH Host aliases, users, ports, ProxyJump, and other login details
+    id_rsa             # Optional: private key required for key-based SSH login
 ```
 
-Recommended setup:
-
-- Copy `config/gateway.example.yaml` to `config/gateway.yaml` and edit it for your environment.
-- Use `config/ssh/` only when you want SQLTunnel to load SSH files from the mounted config directory.
-- Put private keys such as `id_rsa` under `config/ssh/` only when the SSH server requires key-based login.
-- Put an SSH config file under `config/ssh/config` when you want to describe SSH login details with Host aliases, ports, users, IdentityFile, or ProxyJump.
-- Reference SSH files with paths relative to `gateway.yaml`, for example `sshConfigPath: ssh/config` and `privateKeyPath: ssh/id_rsa`.
-- Mount the whole `config` directory into the container as `/app/config`; the default config path becomes `/app/config/gateway.yaml`.
-- Keep API keys, database passwords, and SSH private keys in `config/gateway.yaml` or files under `config/ssh/`; external callers only need their own API key.
+Copy `config/gateway.example.yaml` and edit it for your environment. For Docker deployments, mount the entire `config` directory at `/app/config`. Reference SSH files with paths relative to `gateway.yaml`, such as `ssh/config` or `ssh/id_rsa`.
 
 ## OpenAPI
 
-SQLTunnel serves its OpenAPI document at `GET /openapi.json` and exposes only two business endpoints:
+The OpenAPI document is available at `GET /openapi.json`. Business endpoints include:
 
-- `POST /schema`: list databases, list tables, or describe one table through an explicit `operation`.
-- `POST /query`: execute one authorized and bounded SQL statement.
+- `POST /schema`: list databases or tables, or read a table schema.
+- `POST /query`: execute an authorized and bounded SQL statement.
 
-Requests authenticate with `Authorization: Bearer <SQLTUNNEL_API_KEY>`. OpenAPI is suitable for direct HTTP clients, automation workflows, and applications without MCP support. See the [API reference](docs/api.md) for complete request and response schemas.
+Requests authenticate with `Authorization: Bearer <SQLTUNNEL_API_KEY>`. See the [API reference](docs/api.md) for complete formats.
 
 ## MCP
 
-SQLTunnel provides a stateless Streamable HTTP MCP endpoint at `POST /mcp`. It uses the same client API keys, db server grants, row limits, and timeouts configured in `gateway.yaml`.
+The Streamable HTTP MCP endpoint is available at `POST /mcp` and provides these tools:
 
-MCP exposes four focused tools:
+- `list_db_servers`
+- `list_database_tables`
+- `get_table_schema`
+- `query_database`
 
-- `list_db_servers`: lists the db servers available to the current client and their effective permissions and limits.
-- `list_database_tables`: lists schemas, tables, and views in one database.
-- `get_table_schema`: reads columns, types, defaults, comments, and keys for one table or view.
-- `query_database`: executes one SQL statement with the same authorization and query limits as `POST /query`.
+MCP uses the same API keys, database permissions, row limits, and timeouts as OpenAPI. Use a read-only client and database account for agents, and expose `/mcp` through HTTPS for remote deployments.
 
-Create a dedicated read-only client for agents and use a read-only database account as defense in depth. Expose `/mcp` through HTTPS for remote deployments, and do not commit real API keys in client configuration files.
-
-Configure the schema cache with `defaults.schemaCacheTtlMs`; set it to `0` to disable caching. A successful write or DDL statement executed through SQLTunnel automatically invalidates the corresponding db server's schema cache.
-
-Detailed setup guides:
+Setup guides:
 
 - [Dify](docs/dify.md)
 - [Claude Code](docs/claude-code.md)
@@ -161,7 +123,3 @@ Detailed setup guides:
 
 - [Configuration reference](docs/configuration.md)
 - [API reference](docs/api.md)
-- [Dify MCP setup guide](docs/dify.md)
-- [Claude Code MCP setup guide](docs/claude-code.md)
-- [Codex MCP setup guide](docs/codex.md)
-- [Hermes MCP setup guide](docs/hermes.md)
