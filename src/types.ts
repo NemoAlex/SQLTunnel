@@ -49,6 +49,7 @@ export interface SshServerConfig extends SshConfig {
 
 export interface DbServerConfig {
   id: string;
+  description?: string;
   type: DatabaseType;
   maxRows?: number;
   queryTimeoutMs?: number;
@@ -125,6 +126,7 @@ export interface SchemaTableSummary {
 
 export interface SchemaDatabaseSummary {
   dbServerId: string;
+  description?: string;
   databaseName: string;
   databaseType: DatabaseType;
   permission: ClientDbServerPermission;

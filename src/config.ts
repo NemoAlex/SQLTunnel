@@ -132,6 +132,9 @@ function validateConfig(config: GatewayConfig) {
       throw new GatewayError("INVALID_CONFIG", `Duplicate dbServer id: ${dbServer.id}`, 500);
     }
     dbServerIds.add(dbServer.id);
+    if (dbServer.description !== undefined) {
+      requireString(dbServer.description, `dbServers[${dbServer.id}].description`);
+    }
     if (dbServer.type !== "mysql" && dbServer.type !== "postgres") {
       throw new GatewayError("INVALID_CONFIG", `dbServer ${dbServer.id} type must be mysql or postgres`, 500);
     }

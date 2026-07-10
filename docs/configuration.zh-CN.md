@@ -104,6 +104,7 @@ Host db-prod
 ```yaml
 dbServers:
   - id: reporting-mysql
+    description: 电商分析数据库，包含每日销售额、商品表现和转化漏斗指标
     type: mysql
     sshServerId: bastion-prod
     maxRows: 1000
@@ -120,6 +121,7 @@ dbServers:
 字段说明：
 
 - `id`：必填。db server id，供 `clients[].dbServers[].serverId` 和查询请求中的 `dbServerId` 引用。
+- `description`：可选。数据库的用途和主要数据说明，会通过 `list_db_servers` 和 `POST /schema` 的 `list_databases` 操作返回给客户端。
 - `type`：必填。数据库类型，支持 `mysql` 或 `postgres`。
 - `sshServerId`：可选。引用 `sshServers[].id`；未配置时直接连接数据库。
 - `maxRows`：可选。该 db server 的默认最大返回行数；未配置时使用 `defaults.maxRows`。

@@ -14,6 +14,7 @@ sshServers: # Optional. Reusable SSH connections referenced by dbServers[].sshSe
 
 dbServers: # Required. Database servers that clients can access.
   - id: prod-postgres
+    description: E-commerce production database containing customer accounts, products, orders, and payments. # Optional. Shown to MCP clients.
     type: postgres # Required. mysql or postgres.
     maxRows: 1000 # Optional. Falls back to defaults.maxRows.
     queryTimeoutMs: 10000 # Optional. Database query timeout; falls back to defaults.queryTimeoutMs.
@@ -26,6 +27,7 @@ dbServers: # Required. Database servers that clients can access.
       database: app # Required.
 
   - id: reporting-mysql
+    description: Analytics database containing daily sales, product performance, and conversion funnel metrics.
     type: mysql
     sshServerId: bastion-prod # Optional. Omit for direct database connections.
     database:

@@ -16,6 +16,7 @@ const config: GatewayConfig = {
   dbServers: [
     {
       id: "test-postgres",
+      description: "Test database containing application data",
       type: "postgres",
       database: {
         host: "127.0.0.1",
@@ -133,6 +134,7 @@ test("MCP client can discover and call SQLTunnel tools", async () => {
       dbServers: [
         {
           id: "test-postgres",
+          description: "Test database containing application data",
           type: "postgres",
           permission: "read",
           maxRows: 50,
@@ -177,6 +179,7 @@ test("OpenAPI exposes only query and schema business tools", async () => {
     databases: [
       {
         dbServerId: "test-postgres",
+        description: "Test database containing application data",
         databaseName: "test",
         databaseType: "postgres",
         permission: "read"

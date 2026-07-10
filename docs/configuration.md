@@ -104,6 +104,7 @@ Local runs use `SSH_AUTH_SOCK` when an ssh-agent is available. In Docker, mount 
 ```yaml
 dbServers:
   - id: reporting-mysql
+    description: E-commerce analytics database containing daily sales, product performance, and conversion funnel metrics
     type: mysql
     sshServerId: bastion-prod
     maxRows: 1000
@@ -120,6 +121,7 @@ dbServers:
 Fields:
 
 - `id`: Required. Db server id used by `clients[].dbServers[].serverId` and query request `dbServerId`.
+- `description`: Optional. Describes the database's purpose and main data. It is returned to clients by `list_db_servers` and the `list_databases` operation of `POST /schema`.
 - `type`: Required. Database type: `mysql` or `postgres`.
 - `sshServerId`: Optional. References `sshServers[].id`. If omitted, SQLTunnel connects directly to the database.
 - `maxRows`: Optional. Default max rows for this db server. If omitted, `defaults.maxRows` is used.

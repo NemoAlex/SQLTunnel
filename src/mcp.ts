@@ -9,6 +9,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 
 const dbServerSchema = z.object({
   id: z.string(),
+  description: z.string().optional(),
   type: z.enum(["mysql", "postgres"]),
   permission: z.enum(["read", "write"]),
   maxRows: z.number().int().positive(),
@@ -141,7 +142,8 @@ function createMcpServer(gateway: GatewayService, context: AuthContext): McpServ
     "list_db_servers",
     {
       title: "List accessible database servers",
-      description: "List the database servers available to this SQLTunnel client and their effective permissions and limits.",
+      description:
+        "List the database servers available to this SQLTunnel client, including their purpose, effective permissions, and limits. Use the description to choose the appropriate database.",
       inputSchema: {},
       outputSchema: {
         dbServers: z.array(dbServerSchema)

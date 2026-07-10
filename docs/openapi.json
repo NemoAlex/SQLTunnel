@@ -183,6 +183,7 @@
         "required": ["dbServerId", "databaseName", "databaseType", "permission"],
         "properties": {
           "dbServerId": { "type": "string" },
+          "description": { "type": "string" },
           "databaseName": { "type": "string" },
           "databaseType": { "type": "string", "enum": ["mysql", "postgres"] },
           "permission": { "type": "string", "enum": ["read", "write"] }

@@ -49,6 +49,7 @@ export class GatewayService {
 
       return {
         id: dbServer.id,
+        ...(dbServer.description === undefined ? {} : { description: dbServer.description }),
         type: dbServer.type,
         permission: grant.permission,
         maxRows: resolveEffectiveLimit(dbServer.maxRows ?? this.config.defaults.maxRows, grant.maxRows),
@@ -150,6 +151,7 @@ export class GatewayService {
       }
       return {
         dbServerId: dbServer.id,
+        ...(dbServer.description === undefined ? {} : { description: dbServer.description }),
         databaseName: dbServer.database.database,
         databaseType: dbServer.type,
         permission: grant.permission
