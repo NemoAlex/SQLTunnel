@@ -54,7 +54,9 @@ The service listens on `0.0.0.0:3000` by default. Override it with environment v
 FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```
 
-### Docker Compose
+### Use the Docker Image
+
+Use the published SQLTunnel image with Docker Compose:
 
 ```yaml
 services:
@@ -73,13 +75,26 @@ cp config/gateway.example.yaml config/gateway.yaml
 docker compose up -d
 ```
 
-The repository's `compose.yaml` builds the image locally:
+### Build the Docker Image Locally
+
+The repository's `compose.yaml` builds SQLTunnel from the local source code and starts the service:
 
 ```bash
 docker compose up --build
 ```
 
-## Config Directory
+## Configuration
+
+SQLTunnel reads `config/gateway.yaml` by default. Start by copying `config/gateway.example.yaml`, then configure the following sections:
+
+- `defaults`: optional global limits for returned rows, query and connection timeouts, and schema cache lifetime.
+- `sshServers`: optional reusable SSH connections. Database servers can reference them by ID when a direct connection is not available.
+- `dbServers`: MySQL or PostgreSQL connection details, optional SSH routing, and server-level limits.
+- `clients`: API keys, database access grants, `read` or `write` permissions, and optional per-client limits.
+
+See the **[configuration reference](docs/configuration.md)** for the complete YAML schema, field descriptions, defaults, SSH config support, ProxyJump examples, and permission behavior.
+
+The recommended directory layout is:
 
 ```text
 config/
@@ -90,7 +105,9 @@ config/
     id_rsa             # Optional: private key required for key-based SSH login
 ```
 
-Copy `config/gateway.example.yaml` and edit it for your environment. For Docker deployments, mount the entire `config` directory at `/app/config`. Reference SSH files with paths relative to `gateway.yaml`, such as `ssh/config` or `ssh/id_rsa`.
+Set `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` to load a configuration file from another location. Relative `sshConfigPath` and `privateKeyPath` values are resolved from the directory containing `gateway.yaml`, so the layout above works both locally and when the entire `config` directory is mounted at `/app/config` in Docker.
+
+`gateway.yaml` contains database passwords, client API keys, and possibly SSH credentials. Keep it out of version control, restrict its file permissions, and give each client only the database access and `read` or `write` permission it needs.
 
 ## OpenAPI
 

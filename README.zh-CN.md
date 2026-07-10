@@ -54,7 +54,9 @@ npm run start
 FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```
 
-### Docker Compose
+### 使用 Docker 镜像
+
+通过 Docker Compose 使用已发布的 SQLTunnel 镜像：
 
 ```yaml
 services:
@@ -73,13 +75,26 @@ cp config/gateway.example.yaml config/gateway.yaml
 docker compose up -d
 ```
 
-仓库内的 `compose.yaml` 用于本地构建：
+### 使用 Docker 本地构建
+
+仓库内的 `compose.yaml` 会从本地源码构建 SQLTunnel 并启动服务：
 
 ```bash
 docker compose up --build
 ```
 
-## 配置目录
+## 配置
+
+SQLTunnel 默认读取 `config/gateway.yaml`。先复制 `config/gateway.example.yaml`，再配置以下部分：
+
+- `defaults`：可选的全局限制，包括最大返回行数、查询和连接超时、Schema 缓存时间。
+- `sshServers`：可选的可复用 SSH 连接；数据库无法直连时，可通过 ID 引用 SSH 连接。
+- `dbServers`：MySQL 或 PostgreSQL 的连接信息、可选 SSH 路由，以及数据库级限制。
+- `clients`：API key、数据库访问授权、`read` 或 `write` 权限，以及可选的客户端级限制。
+
+完整 YAML 结构、字段含义、默认值、SSH config 支持、ProxyJump 示例和权限规则，请查看 **[配置参考](docs/configuration.zh-CN.md)**。
+
+推荐的目录结构如下：
 
 ```text
 config/
@@ -90,7 +105,9 @@ config/
     id_rsa             # 可选：使用密钥登录 SSH 时需要的私钥
 ```
 
-复制 `config/gateway.example.yaml` 后按实际环境修改。Docker 部署时将整个 `config` 目录挂载到 `/app/config`。SSH 文件可通过相对于 `gateway.yaml` 的路径引用，例如 `ssh/config` 或 `ssh/id_rsa`。
+可通过 `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` 从其他位置加载配置文件。相对路径形式的 `sshConfigPath` 和 `privateKeyPath` 均基于 `gateway.yaml` 所在目录解析，因此上面的结构既适用于本地运行，也适用于将整个 `config` 目录挂载到 `/app/config` 的 Docker 部署。
+
+`gateway.yaml` 包含数据库密码、客户端 API key，并可能包含 SSH 凭据。请勿将其提交到版本控制，限制文件访问权限，并只授予每个客户端所需的数据库及 `read` 或 `write` 权限。
 
 ## OpenAPI
 

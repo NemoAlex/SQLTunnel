@@ -54,7 +54,9 @@ Le service écoute par défaut sur `0.0.0.0:3000`. Utilisez des variables d'envi
 FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```
 
-### Docker Compose
+### Utiliser l'image Docker
+
+Utilisez l'image SQLTunnel publiée avec Docker Compose :
 
 ```yaml
 services:
@@ -73,13 +75,26 @@ cp config/gateway.example.yaml config/gateway.yaml
 docker compose up -d
 ```
 
-Le fichier `compose.yaml` du dépôt construit l'image localement :
+### Construire l'image Docker localement
+
+Le fichier `compose.yaml` du dépôt construit SQLTunnel à partir du code source local et démarre le service :
 
 ```bash
 docker compose up --build
 ```
 
-## Répertoire de configuration
+## Configuration
+
+SQLTunnel lit `config/gateway.yaml` par défaut. Commencez par copier `config/gateway.example.yaml`, puis configurez les sections suivantes :
+
+- `defaults` : limites globales facultatives pour le nombre de lignes renvoyées, les délais de requête et de connexion, et la durée du cache de Schema.
+- `sshServers` : connexions SSH réutilisables facultatives, référencées par identifiant lorsqu'une connexion directe à la base de données n'est pas disponible.
+- `dbServers` : informations de connexion MySQL ou PostgreSQL, routage SSH facultatif et limites propres au serveur.
+- `clients` : clés API, autorisations d'accès aux bases de données, droits `read` ou `write` et limites facultatives propres au client.
+
+Consultez la **[référence de configuration](../configuration.md)** pour le schema YAML complet, la description des champs, les valeurs par défaut, la prise en charge de SSH config, des exemples ProxyJump et le fonctionnement des autorisations.
+
+La structure de répertoires recommandée est la suivante :
 
 ```text
 config/
@@ -90,7 +105,9 @@ config/
     id_rsa             # Facultatif : clé privée requise pour l'authentification SSH par clé
 ```
 
-Copiez `config/gateway.example.yaml`, puis adaptez-le à votre environnement. Avec Docker, montez le répertoire `config` complet dans `/app/config`. Référencez les fichiers SSH avec des chemins relatifs à `gateway.yaml`, par exemple `ssh/config` ou `ssh/id_rsa`.
+Définissez `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` pour charger un fichier de configuration situé ailleurs. Les valeurs relatives de `sshConfigPath` et `privateKeyPath` sont résolues depuis le répertoire contenant `gateway.yaml`. La structure ci-dessus convient donc à une exécution locale comme à un déploiement Docker où le répertoire `config` complet est monté dans `/app/config`.
+
+`gateway.yaml` contient les mots de passe des bases de données, les clés API des clients et éventuellement des identifiants SSH. Ne l'ajoutez pas au contrôle de version, limitez ses droits d'accès et n'accordez à chaque client que les bases de données et les droits `read` ou `write` nécessaires.
 
 ## OpenAPI
 

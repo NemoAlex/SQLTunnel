@@ -54,7 +54,9 @@ npm run start
 FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```
 
-### Docker Compose
+### Docker イメージを使用
+
+公開済みの SQLTunnel イメージを Docker Compose で使用します。
 
 ```yaml
 services:
@@ -73,13 +75,26 @@ cp config/gateway.example.yaml config/gateway.yaml
 docker compose up -d
 ```
 
-リポジトリの `compose.yaml` はイメージをローカルでビルドします。
+### Docker イメージをローカルでビルド
+
+リポジトリの `compose.yaml` はローカルのソースコードから SQLTunnel をビルドし、サービスを起動します。
 
 ```bash
 docker compose up --build
 ```
 
-## config ディレクトリ
+## 設定
+
+SQLTunnel は既定で `config/gateway.yaml` を読み込みます。まず `config/gateway.example.yaml` をコピーし、次のセクションを設定します。
+
+- `defaults`：返却行数、クエリと接続のタイムアウト、Schema キャッシュ期間に関する任意のグローバル制限。
+- `sshServers`：任意の再利用可能な SSH 接続。データベースへ直接接続できない場合、データベースサーバーから ID で参照できます。
+- `dbServers`：MySQL または PostgreSQL の接続情報、任意の SSH ルーティング、サーバー単位の制限。
+- `clients`：API key、データベースへのアクセス許可、`read` または `write` 権限、任意の client 単位の制限。
+
+完全な YAML schema、フィールドの説明、既定値、SSH config の対応範囲、ProxyJump の例、権限の動作については、**[設定リファレンス](../configuration.md)**を参照してください。
+
+推奨するディレクトリ構成は次のとおりです。
 
 ```text
 config/
@@ -90,7 +105,9 @@ config/
     id_rsa             # 任意：鍵認証による SSH ログインに必要な秘密鍵
 ```
 
-`config/gateway.example.yaml` をコピーし、環境に合わせて編集します。Docker では `config` ディレクトリ全体を `/app/config` にマウントします。SSH ファイルは `ssh/config` や `ssh/id_rsa` のように `gateway.yaml` からの相対パスで参照します。
+別の場所にある設定ファイルを読み込むには、`SQLTUNNEL_CONFIG=/path/to/gateway.yaml` を指定します。相対パスの `sshConfigPath` と `privateKeyPath` は `gateway.yaml` があるディレクトリを基準に解決されるため、上記の構成はローカル実行にも、`config` ディレクトリ全体を `/app/config` にマウントする Docker 環境にも利用できます。
+
+`gateway.yaml` にはデータベースパスワード、client API key、場合によっては SSH 認証情報が含まれます。バージョン管理には追加せず、ファイルのアクセス権を制限し、各 client には必要なデータベースと `read` または `write` 権限だけを付与してください。
 
 ## OpenAPI
 
