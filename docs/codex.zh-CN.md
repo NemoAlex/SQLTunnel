@@ -25,13 +25,7 @@ clients:
 
 ## 配置 API key
 
-SQLTunnel 使用 `Authorization: Bearer <SQLTUNNEL_API_KEY>` 鉴权。Codex 可以从环境变量读取 Token，无需把它写入配置文件。
-
-先在启动 Codex 的环境中设置：
-
-```bash
-export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
-```
+SQLTunnel 使用 `Authorization: Bearer <SQLTUNNEL_API_KEY>` 鉴权。Codex 可以直接发送这个 Header，也可以从环境变量读取 Token。直接设置 Header 更适合桌面端快速接入，但会明文保存密钥；环境变量方式不会把密钥写进 Codex 配置。
 
 ## 在 Codex 桌面端添加
 
@@ -41,16 +35,47 @@ export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
 4. 名称填写 `SQLTunnel`。
 5. 类型选择 **Streamable HTTP**。
 6. URL 填写 `http://127.0.0.1:3000/mcp`，或者 Codex 能访问的 HTTPS 地址。
-7. Bearer Token 环境变量填写 `SQLTUNNEL_API_KEY`。
+7. 从下面两种鉴权方式中选择一种。
 8. 保存服务并重启 Codex。
 
-这里填写的是环境变量名，不是 API key 的实际值。Codex 最终发送：
+### 桌面端方式一：直接设置 Authorization Header
+
+在 HTTP Headers 区域新增：
+
+```text
+名称：Authorization
+值：  Bearer replace-with-a-random-secret
+```
+
+值中必须包含 `Bearer ` 前缀。这是桌面端最直接的配置方式，但 API key 会以明文保存到 Codex 配置中。
+
+### 桌面端方式二：使用 Bearer Token 环境变量
+
+先在启动 Codex 的环境中设置：
+
+```bash
+export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
+```
+
+在 **Bearer Token Environment Variable** 中填写：
+
+```text
+SQLTUNNEL_API_KEY
+```
+
+这里填写的是环境变量名，不是 API key 的实际值。Codex 读取变量值后发送：
 
 ```http
 Authorization: Bearer <SQLTUNNEL_API_KEY>
 ```
 
-桌面端必须能从启动环境继承 `SQLTUNNEL_API_KEY`。如果无法继承，可以在 `~/.codex/config.toml` 中使用静态 Header：
+桌面端必须能从启动环境继承 `SQLTUNNEL_API_KEY`。在其他终端窗口中执行的 `export`，通过 Finder 或 Dock 启动的应用不一定能够读取；无法向桌面进程提供环境变量时，请使用直接 Header 方式。
+
+## 为 Codex CLI 添加服务
+
+### CLI 方式一：直接设置 Authorization Header
+
+`codex mcp add` 不能直接传入任意静态 Header，需要编辑 `~/.codex/config.toml`：
 
 ```toml
 [mcp_servers.sqltunnel]
@@ -58,17 +83,21 @@ url = "http://127.0.0.1:3000/mcp"
 http_headers = { Authorization = "Bearer replace-with-a-random-secret" }
 ```
 
-该方式会以明文保存 API key。请限制 `~/.codex/config.toml` 的访问权限，并尽量优先使用环境变量。
+Codex CLI、桌面端和 IDE 扩展都会使用该配置。文件中包含明文密钥，请限制其访问权限。
 
-## 使用 CLI 添加
+### CLI 方式二：使用 Bearer Token 环境变量
+
+设置环境变量并添加服务：
 
 ```bash
+export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
+
 codex mcp add sqltunnel \
   --url "http://127.0.0.1:3000/mcp" \
   --bearer-token-env-var SQLTUNNEL_API_KEY
 ```
 
-该命令会写入用户级 MCP 配置。需要设置工具审批和超时时间时，再编辑 `~/.codex/config.toml`。
+`--bearer-token-env-var` 接收的是环境变量名，不是变量值。该命令会写入用户级 MCP 配置，但不会保存密钥。需要设置工具审批和超时时间时，再编辑 `~/.codex/config.toml`。
 
 ## 全局配置
 
@@ -77,7 +106,9 @@ codex mcp add sqltunnel \
 ```toml
 [mcp_servers.sqltunnel]
 url = "http://127.0.0.1:3000/mcp"
+# 两种鉴权配置只选一种：
 bearer_token_env_var = "SQLTUNNEL_API_KEY"
+# http_headers = { Authorization = "Bearer replace-with-a-random-secret" }
 enabled_tools = ["list_db_servers", "list_database_tables", "get_table_schema", "query_database"]
 default_tools_approval_mode = "writes"
 startup_timeout_sec = 20

@@ -25,13 +25,7 @@ clients:
 
 ## Configure the API key
 
-SQLTunnel authenticates with `Authorization: Bearer <SQLTUNNEL_API_KEY>`. Codex can read the token from an environment variable without storing it in its configuration.
-
-Set the secret in the environment that launches Codex:
-
-```bash
-export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
-```
+SQLTunnel authenticates with `Authorization: Bearer <SQLTUNNEL_API_KEY>`. Codex can send this header directly or construct it from an environment variable. Direct headers are simpler for desktop use but store the key in plaintext; environment variables avoid putting the key in Codex configuration.
 
 ## Add in the Codex desktop app
 
@@ -41,16 +35,47 @@ export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
 4. Enter `SQLTunnel` as the name.
 5. Select **Streamable HTTP**.
 6. Enter `http://127.0.0.1:3000/mcp`, or the HTTPS URL reachable from Codex.
-7. Configure the Bearer token environment variable as `SQLTUNNEL_API_KEY`.
+7. Choose one of the authentication methods below.
 8. Save the server and restart Codex.
 
-Enter the environment variable name, not the API key itself. The resulting request is:
+### Desktop method 1: direct Authorization header
+
+In the HTTP headers section, add:
+
+```text
+Name:  Authorization
+Value: Bearer replace-with-a-random-secret
+```
+
+The value must include the `Bearer ` prefix. This is the most direct desktop setup, but the API key is stored in plaintext in Codex configuration.
+
+### Desktop method 2: Bearer-token environment variable
+
+Set the variable in the environment that launches Codex:
+
+```bash
+export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
+```
+
+In **Bearer Token Environment Variable**, enter:
+
+```text
+SQLTUNNEL_API_KEY
+```
+
+Enter the environment variable name, not the API key itself. Codex reads its value and sends:
 
 ```http
 Authorization: Bearer <SQLTUNNEL_API_KEY>
 ```
 
-The desktop app must inherit `SQLTUNNEL_API_KEY` from the environment that launched it. If it cannot, use the static-header fallback in `~/.codex/config.toml`:
+The desktop app must inherit `SQLTUNNEL_API_KEY` from the environment that launched it. A variable exported in an unrelated terminal session may not be visible to an app launched from Finder or the Dock; use the direct-header method if you cannot provide the variable to the desktop process.
+
+## Add the server for Codex CLI
+
+### CLI method 1: direct Authorization header
+
+`codex mcp add` does not take arbitrary static headers directly. Add the server to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.sqltunnel]
@@ -58,17 +83,21 @@ url = "http://127.0.0.1:3000/mcp"
 http_headers = { Authorization = "Bearer replace-with-a-random-secret" }
 ```
 
-This stores the API key in plaintext. Restrict access to `~/.codex/config.toml` and prefer the environment-backed option where possible.
+This configuration is used by Codex CLI, the desktop app, and the IDE extension. Restrict access to the file because it contains the key in plaintext.
 
-## Add the server with the CLI
+### CLI method 2: Bearer-token environment variable
+
+Set the variable and add the server:
 
 ```bash
+export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
+
 codex mcp add sqltunnel \
   --url "http://127.0.0.1:3000/mcp" \
   --bearer-token-env-var SQLTUNNEL_API_KEY
 ```
 
-This writes the user-level MCP configuration. To add tool approval and timeout settings, edit `~/.codex/config.toml` afterward.
+`--bearer-token-env-var` receives the environment variable name, not its value. The command writes the user-level MCP configuration without storing the key. To add tool approval and timeout settings, edit `~/.codex/config.toml` afterward.
 
 ## Global configuration
 
@@ -77,7 +106,9 @@ Edit `~/.codex/config.toml`:
 ```toml
 [mcp_servers.sqltunnel]
 url = "http://127.0.0.1:3000/mcp"
+# Choose exactly one authentication setting:
 bearer_token_env_var = "SQLTUNNEL_API_KEY"
+# http_headers = { Authorization = "Bearer replace-with-a-random-secret" }
 enabled_tools = ["list_db_servers", "list_database_tables", "get_table_schema", "query_database"]
 default_tools_approval_mode = "writes"
 startup_timeout_sec = 20
