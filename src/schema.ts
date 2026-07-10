@@ -12,12 +12,12 @@ export const MAX_SCHEMA_COLUMNS = 20000;
 
 const MYSQL_SCHEMA_SQL = `
 select
-  t.table_schema as schema_name,
-  t.table_name,
-  t.table_type,
+  cast(t.table_schema as char) as schema_name,
+  cast(t.table_name as char) as table_name,
+  cast(t.table_type as char) as table_type,
   t.table_comment,
-  c.column_name,
-  c.column_type as data_type,
+  cast(c.column_name as char) as column_name,
+  cast(c.column_type as char) as data_type,
   c.is_nullable,
   c.column_default,
   c.column_comment,
@@ -180,10 +180,11 @@ function normalizeTableType(value: unknown, databaseType: DatabaseType): SchemaT
 }
 
 function requireRowString(value: unknown, field: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+  const normalized = Buffer.isBuffer(value) ? value.toString("utf8") : value;
+  if (typeof normalized !== "string" || normalized.length === 0) {
     throw new GatewayError("SCHEMA_QUERY_FAILED", `Schema query returned invalid ${field}`, 500);
   }
-  return value;
+  return normalized;
 }
 
 function toInteger(value: unknown, field: string): number {

@@ -110,6 +110,32 @@ test("normalizes MySQL schema metadata", () => {
   assert.equal(users?.columns[1].defaultValue, "");
 });
 
+test("normalizes binary MySQL-compatible schema identifiers", () => {
+  const row = mysqlSchemaRows[0];
+  const queryResult: QueryResult = {
+    columns: [],
+    rows: [
+      {
+        ...row,
+        schema_name: Buffer.from(row.schema_name),
+        table_name: Buffer.from(row.table_name),
+        column_name: Buffer.from(row.column_name),
+        data_type: Buffer.from(row.data_type)
+      }
+    ],
+    rowCount: 1,
+    durationMs: 5,
+    dbServerId: "mysql-test"
+  };
+
+  const result = normalizeDatabaseSchema("mysql-test", "shop", "mysql", queryResult, "2026-07-10T00:00:00.000Z");
+
+  assert.equal(result.schemas[0].name, "shop");
+  assert.equal(result.schemas[0].tables[0].name, "users");
+  assert.equal(result.schemas[0].tables[0].columns[0].name, "id");
+  assert.equal(result.schemas[0].tables[0].columns[0].dataType, "bigint unsigned");
+});
+
 test("normalizes PostgreSQL schema metadata", () => {
   const queryResult: QueryResult = {
     columns: [],
@@ -159,6 +185,7 @@ test("normalizes PostgreSQL schema metadata", () => {
 test("uses engine-specific metadata catalogs", () => {
   assert.match(getSchemaSql("mysql"), /information_schema\.columns/i);
   assert.match(getSchemaSql("mysql"), /database\(\)/i);
+  assert.match(getSchemaSql("mysql"), /cast\(t\.table_name as char\) as table_name/i);
   assert.match(getSchemaSql("postgres"), /pg_class/i);
   assert.match(getSchemaSql("postgres"), /pg_catalog/);
 });
