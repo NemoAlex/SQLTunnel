@@ -157,11 +157,9 @@ Detailed setup guides:
 - [Codex](docs/codex.md)
 - [Hermes](docs/hermes.md)
 
-In the Codex desktop app, open **Settings → Plugins → MCPs → Connect a custom MCP**, choose **Streamable HTTP**, set the name to `SQLTunnel`, and enter `http://127.0.0.1:3000/mcp` (or your HTTPS deployment URL). Authenticate either with a direct `Authorization: Bearer <key>` header or with the `SQLTUNNEL_API_KEY` Bearer-token environment variable, then save and restart Codex. The CLI supports the same two approaches through `config.toml` or `--bearer-token-env-var`; see the [Codex guide](docs/codex.md#add-in-the-codex-desktop-app).
-
 ## Backup
 
-Backup is optional. Without `config/backup.yaml`, SQLTunnel runs as a query gateway only.
+Backups can export PostgreSQL and MySQL databases on a schedule or on demand, then manage the resulting files according to retention policies.
 
 ```bash
 cp config/backup.example.yaml config/backup.yaml
