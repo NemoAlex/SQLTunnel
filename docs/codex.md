@@ -33,6 +33,33 @@ Set the secret in the environment that launches Codex:
 export SQLTUNNEL_API_KEY="replace-with-a-random-secret"
 ```
 
+## Add in the Codex desktop app
+
+1. Open **Settings**.
+2. Select **Plugins** under **Integrations**.
+3. Open the **MCPs** tab and select **Connect a custom MCP**.
+4. Enter `SQLTunnel` as the name.
+5. Select **Streamable HTTP**.
+6. Enter `http://127.0.0.1:3000/mcp`, or the HTTPS URL reachable from Codex.
+7. Configure the Bearer token environment variable as `SQLTUNNEL_API_KEY`.
+8. Save the server and restart Codex.
+
+Enter the environment variable name, not the API key itself. The resulting request is:
+
+```http
+Authorization: Bearer <SQLTUNNEL_API_KEY>
+```
+
+The desktop app must inherit `SQLTUNNEL_API_KEY` from the environment that launched it. If it cannot, use the static-header fallback in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.sqltunnel]
+url = "http://127.0.0.1:3000/mcp"
+http_headers = { Authorization = "Bearer replace-with-a-random-secret" }
+```
+
+This stores the API key in plaintext. Restrict access to `~/.codex/config.toml` and prefer the environment-backed option where possible.
+
 ## Add the server with the CLI
 
 ```bash

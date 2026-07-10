@@ -157,6 +157,8 @@ Schema 缓存时间可通过 `defaults.schemaCacheTtlMs` 调整；设为 `0` 可
 - [Codex](docs/codex.zh-CN.md)
 - [Hermes](docs/hermes.zh-CN.md)
 
+Codex 桌面端可通过 **Settings → Plugins → MCPs → Connect a custom MCP** 添加：类型选择 **Streamable HTTP**，名称填写 `SQLTunnel`，URL 填写 `http://127.0.0.1:3000/mcp`（或实际部署的 HTTPS URL），Bearer Token 使用环境变量 `SQLTUNNEL_API_KEY`，保存后重启 Codex。鉴权细节和备用配置方式见 [Codex 接入指南](docs/codex.zh-CN.md#在-codex-桌面端添加)。
+
 ## 备份功能
 
 备份是可选功能。没有 `config/backup.yaml` 时，SQLTunnel 只作为查询网关运行。

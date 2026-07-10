@@ -157,6 +157,8 @@ Detailed setup guides:
 - [Codex](docs/codex.md)
 - [Hermes](docs/hermes.md)
 
+In the Codex desktop app, open **Settings → Plugins → MCPs → Connect a custom MCP**, choose **Streamable HTTP**, set the name to `SQLTunnel`, and enter `http://127.0.0.1:3000/mcp` (or your HTTPS deployment URL). Configure the Bearer token from the `SQLTUNNEL_API_KEY` environment variable, save, and restart Codex. See the [Codex guide](docs/codex.md#add-in-the-codex-desktop-app) for authentication details and alternatives.
+
 ## Backup
 
 Backup is optional. Without `config/backup.yaml`, SQLTunnel runs as a query gateway only.
