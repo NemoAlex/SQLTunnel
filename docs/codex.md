@@ -12,6 +12,7 @@ Choose either plaintext configuration or environment-variable configuration.
 Name: SQLTunnel
 Type: Streamable HTTP
 URL: http://127.0.0.1:3000/mcp
+Bearer Token Environment Variable: Leave blank
 
 HTTP Headers
 Name: Authorization
@@ -29,6 +30,7 @@ Name: SQLTunnel
 Type: Streamable HTTP
 URL: http://127.0.0.1:3000/mcp
 Bearer Token Environment Variable: SQLTUNNEL_API_KEY
+HTTP Headers: Leave blank; do not add a header
 ```
 
 ## CLI
