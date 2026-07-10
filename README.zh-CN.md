@@ -48,6 +48,18 @@ npm run build
 npm run start
 ```
 
+### macOS 桌面 App
+
+仓库包含一个轻量的单窗口 Electron App，可图形化管理数据库、SSH 隧道、客户端授权和全局限制，并通过窗口顶部的开关启动或停止本地网关。
+
+```bash
+npm install
+npm run desktop:dev  # 开发模式
+npm run dist:mac     # 生成 Apple Silicon App、DMG 和 ZIP
+```
+
+桌面版固定监听 `127.0.0.1`，配置默认保存在 `~/Library/Application Support/sqltunnel/gateway.yaml`。正式分发前需使用 Developer ID 完成签名和 Apple 公证。
+
 服务默认监听 `0.0.0.0:3000`，可通过环境变量修改：
 
 ```bash

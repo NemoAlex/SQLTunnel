@@ -3,6 +3,9 @@ node_modules/
 
 # Build output
 dist/
+dist-electron/
+dist-renderer/
+release/
 coverage/
 
 # Local runtime config and secrets

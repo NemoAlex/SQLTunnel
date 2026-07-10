@@ -48,6 +48,18 @@ npm run build
 npm run start
 ```
 
+### macOS Desktop App
+
+The repository includes a compact single-window Electron app for graphically managing databases, SSH tunnels, client grants, and global limits. The switch at the top starts and stops the local gateway.
+
+```bash
+npm install
+npm run desktop:dev  # Development mode
+npm run dist:mac     # Build the Apple Silicon app, DMG, and ZIP
+```
+
+The desktop app always binds to `127.0.0.1` and stores its configuration at `~/Library/Application Support/sqltunnel/gateway.yaml` by default. Sign it with a Developer ID and notarize it before public distribution.
+
 The service listens on `0.0.0.0:3000` by default. Override it with environment variables:
 
 ```bash

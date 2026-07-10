@@ -14,13 +14,17 @@ type OpenApiDocument = Record<string, unknown> & {
   servers?: Array<{ url: string }>;
 };
 
-export function buildServer(config: GatewayConfig) {
+export interface BuildServerOptions {
+  openApiPath?: string;
+}
+
+export function buildServer(config: GatewayConfig, options: BuildServerOptions = {}) {
   const app = Fastify({
     logger: true,
     genReqId: () => randomUUID()
   });
   const gateway = new GatewayService(config);
-  const openApiDocument = loadOpenApiDocument();
+  const openApiDocument = loadOpenApiDocument(options.openApiPath);
 
   app.register(sensible);
 
@@ -103,8 +107,8 @@ function formatRawValue(value: unknown): string {
   return String(value);
 }
 
-function loadOpenApiDocument(): OpenApiDocument {
-  const openApiPath = path.resolve("docs/openapi.json");
+function loadOpenApiDocument(configuredPath?: string): OpenApiDocument {
+  const openApiPath = configuredPath ?? path.resolve("docs/openapi.json");
   return JSON.parse(fs.readFileSync(openApiPath, "utf8")) as OpenApiDocument;
 }
 

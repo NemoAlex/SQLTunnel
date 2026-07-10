@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist-electron",
+    "rootDir": ".",
+    "types": ["node", "electron"],
+    "noEmitOnError": true
+  },
+  "include": [
+    "electron/**/*.ts",
+    "electron/**/*.cts",
+    "shared/**/*.ts",
+    "src/**/*.ts"
+  ]
+}

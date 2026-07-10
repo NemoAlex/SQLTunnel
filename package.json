@@ -2,24 +2,36 @@
   "name": "sqltunnel",
   "version": "1.0.2",
   "private": true,
+  "author": "NemoAlex",
   "description": "Node.js/TypeScript database connection gateway with optional SSH tunneling.",
   "type": "module",
+  "main": "dist-electron/electron/main.js",
   "bin": {
     "sqltunnel": "dist/cli.js"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:core",
+    "build:core": "tsc -p tsconfig.json",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:renderer": "vite build",
+    "build:desktop": "npm run build:core && npm run build:electron && npm run build:renderer",
+    "desktop:dev": "npm run build:core && npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "desktop:preview": "npm run build:desktop && electron .",
+    "dist:mac": "npm run build:desktop && electron-builder --mac",
     "start": "node dist/index.js",
     "test": "node --import tsx --test test/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.renderer.json"
   },
   "dependencies": {
     "@fastify/sensible": "^6.0.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "fastify": "^5.8.5",
+    "lucide-react": "^1.24.0",
     "mysql2": "^3.11.3",
     "pg": "^8.13.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "ssh2": "^1.16.0",
     "yaml": "^2.6.0",
     "zod": "^4.4.3"
@@ -27,11 +39,47 @@
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/pg": "^8.11.10",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@types/ssh2": "^1.15.4",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vite": "^8.1.4",
+    "wait-on": "^9.0.10"
   },
   "engines": {
     "node": ">=20"
+  },
+  "build": {
+    "appId": "dev.nemo.sqltunnel",
+    "productName": "SQLTunnel",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist-renderer/**/*",
+      "docs/openapi.json",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon-1024.png",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true
+    },
+    "dmg": {
+      "title": "SQLTunnel ${version}"
+    }
   }
 }
