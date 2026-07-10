@@ -74,7 +74,7 @@ In Dify, go to Tools, create a Custom Tool, and import SQLTunnel's OpenAPI schem
 
 The imported tool should expose two actions:
 
-- `POST /db-servers`
+- `POST /schema`
 - `POST /query`
 
 ### 3. Configure Authentication
@@ -100,11 +100,11 @@ In Dify Studio, create an Agent app. Depending on the Dify UI version, the Agent
 
 Add the imported SQLTunnel Custom Tool to the Agent's Tools.
 
-You can fix `dbServerId` to one business database, or let the Agent call `/db-servers` first and choose an available db server.
+You can fix `dbServerId` to one business database, or let the Agent call `/schema` with `operation: list_databases` first and choose an available database.
 
 ### 3. Agent Prompt
 
-Paste the following into the Agent Instructions / System Prompt. Replace `prod-postgres` with your default `dbServerId`. If the Agent should choose the db server dynamically, keep the instruction to call `/db-servers` when needed.
+Paste the following into the Agent Instructions / System Prompt. Replace `prod-postgres` with your default `dbServerId`. If the Agent should choose the db server dynamically, keep the instruction to call `/schema` with `operation: list_databases` when needed.
 
 ```text
 You are a cautious database query assistant. You can use the SQLTunnel tool to query databases and explain the results to the user.
@@ -113,7 +113,7 @@ SQLTunnel tool rules:
 - Call SQLTunnel only when the user's question requires database data.
 - Available dbServerId list:
   - XX: database for XX business domain
-- If you are not sure which db server is available, call /db-servers first.
+- If you are not sure which db server is available, call /schema with operation list_databases first.
 - When calling /query, always set responseFormat to json.
 - When calling /query, keep maxRows at 100 or lower by default. Use a larger value only when the user explicitly asks for more data and the answer truly needs it.
 - If there are no SQL parameters, pass [] or omit params.

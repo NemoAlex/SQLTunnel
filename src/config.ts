@@ -39,7 +39,8 @@ export function loadConfig(configPath = process.env.SQLTUNNEL_CONFIG ?? DEFAULT_
     defaults: {
       maxRows: parsed.defaults?.maxRows ?? 1000,
       queryTimeoutMs: parsed.defaults?.queryTimeoutMs ?? 10000,
-      connectTimeoutMs: parsed.defaults?.connectTimeoutMs ?? 10000
+      connectTimeoutMs: parsed.defaults?.connectTimeoutMs ?? 10000,
+      schemaCacheTtlMs: parsed.defaults?.schemaCacheTtlMs ?? 300000
     },
     sshServers: normalizeSshServers(parsed.sshServers ?? [], configDir),
     clients: normalizeClients(parsed.clients ?? []),
@@ -69,6 +70,9 @@ function validateConfig(config: GatewayConfig) {
   }
   if (!Number.isInteger(config.defaults.connectTimeoutMs) || config.defaults.connectTimeoutMs <= 0) {
     throw new GatewayError("INVALID_CONFIG", "defaults.connectTimeoutMs must be a positive integer", 500);
+  }
+  if (!Number.isInteger(config.defaults.schemaCacheTtlMs) || config.defaults.schemaCacheTtlMs < 0) {
+    throw new GatewayError("INVALID_CONFIG", "defaults.schemaCacheTtlMs must be a non-negative integer", 500);
   }
 
   const clientIds = new Set<string>();

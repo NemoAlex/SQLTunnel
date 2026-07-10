@@ -17,6 +17,7 @@ Optional global defaults:
 - `defaults.maxRows`: Default max rows. Default: `1000`.
 - `defaults.queryTimeoutMs`: Default database query timeout. Default: `10000`.
 - `defaults.connectTimeoutMs`: Default SSH tunnel and database connection timeout. Default: `10000`.
+- `defaults.schemaCacheTtlMs`: In-memory database schema metadata cache TTL. Default: `300000` (5 minutes). Set to `0` to disable caching.
 
 ### SSH Servers
 

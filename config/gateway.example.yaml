@@ -2,6 +2,7 @@ defaults: # Optional. Global query limits used when db server/client grant does 
   maxRows: 1000 # Optional. Default: 1000.
   queryTimeoutMs: 10000 # Optional. Database query timeout. Default: 10000.
   connectTimeoutMs: 10000 # Optional. SSH tunnel and database connection timeout. Default: 10000.
+  schemaCacheTtlMs: 300000 # Optional. Schema metadata cache TTL. 0 disables caching. Default: 300000 (5 minutes).
 
 sshServers: # Optional. Reusable SSH connections referenced by dbServers[].sshServerId.
   - id: bastion-prod

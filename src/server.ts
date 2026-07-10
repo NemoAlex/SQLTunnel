@@ -3,20 +3,15 @@ import sensible from "@fastify/sensible";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { AuthService } from "./auth.js";
-import { executeQuery } from "./db.js";
-import { GatewayError, toErrorPayload } from "./errors.js";
-import { normalizeParams, normalizeResponseFormat, normalizeSql, resolveMaxRows } from "./sql.js";
-import { SshTunnelPool } from "./ssh.js";
-import type { GatewayConfig, QueryRequest } from "./types.js";
+import { toErrorPayload } from "./errors.js";
+import { GatewayService } from "./gateway-service.js";
+import { handleMcpPost, replyMcpMethodNotAllowed } from "./mcp.js";
+import { normalizeResponseFormat } from "./sql.js";
+import type { GatewayConfig, QueryRequest, QueryResult } from "./types.js";
 import type { FastifyRequest } from "fastify";
 
 type OpenApiDocument = Record<string, unknown> & {
   servers?: Array<{ url: string }>;
-};
-
-const plainLogger = {
-  info: (message: string) => console.info(message)
 };
 
 export function buildServer(config: GatewayConfig) {
@@ -24,15 +19,13 @@ export function buildServer(config: GatewayConfig) {
     logger: true,
     genReqId: () => randomUUID()
   });
-  const auth = new AuthService(config);
-  const sshTunnelPool = new SshTunnelPool(config.sshServers, plainLogger);
-  const dbServersById = new Map(config.dbServers.map((dbServer) => [dbServer.id, dbServer]));
+  const gateway = new GatewayService(config);
   const openApiDocument = loadOpenApiDocument();
 
   app.register(sensible);
 
   app.addHook("onClose", async () => {
-    await sshTunnelPool.closeAll();
+    await gateway.close();
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -49,66 +42,11 @@ export function buildServer(config: GatewayConfig) {
 
   app.get("/openapi.json", async (request) => withRequestServer(openApiDocument, request));
 
-  app.post("/db-servers", async (request) => {
-    const context = auth.authenticate(getApiKey(request));
-    const allowed = context.client.dbServers.map((grant) => {
-      const dbServer = dbServersById.get(grant.serverId);
-      if (!dbServer) {
-        throw new GatewayError("INVALID_CONFIG", `Unknown dbServer in client grant: ${grant.serverId}`, 500);
-      }
-
-      const maxRows = resolveEffectiveLimit(dbServer.maxRows ?? config.defaults.maxRows, grant.maxRows);
-      const queryTimeoutMs = resolveEffectiveLimit(dbServer.queryTimeoutMs ?? config.defaults.queryTimeoutMs, grant.queryTimeoutMs);
-      const connectTimeoutMs = dbServer.connectTimeoutMs ?? config.defaults.connectTimeoutMs;
-
-      return {
-        id: dbServer.id,
-        type: dbServer.type,
-        permission: grant.permission,
-        maxRows,
-        queryTimeoutMs,
-        connectTimeoutMs,
-        ssh: Boolean(dbServer.sshServerId)
-      };
-    });
-
-    return { dbServers: allowed };
-  });
-
   app.post("/query", async (request) => {
     const body = request.body as Partial<QueryRequest> | undefined;
-    const context = auth.authenticate(getApiKey(request));
-    if (!body || typeof body.dbServerId !== "string") {
-      throw new GatewayError("INVALID_REQUEST", "dbServerId is required");
-    }
-
-    const dbServer = dbServersById.get(body.dbServerId);
-    if (!dbServer) {
-      throw new GatewayError("DB_SERVER_NOT_FOUND", `Db server not found: ${body.dbServerId}`, 404);
-    }
-
-    const grant = auth.getDbServerGrant(context, dbServer);
-
-    const sql = normalizeSql(body.sql);
-    const params = normalizeParams(body.params);
-    const responseFormat = normalizeResponseFormat(body.responseFormat);
-    const configuredMaxRows = resolveEffectiveLimit(dbServer.maxRows ?? config.defaults.maxRows, grant.maxRows);
-    const maxRows = resolveMaxRows(body.maxRows, configuredMaxRows);
-    const queryTimeoutMs = resolveEffectiveLimit(dbServer.queryTimeoutMs ?? config.defaults.queryTimeoutMs, grant.queryTimeoutMs);
-    const connectTimeoutMs = dbServer.connectTimeoutMs ?? config.defaults.connectTimeoutMs;
-
-    auth.assertWriteAllowed(grant, sql);
-
-    const result = await executeQuery({
-      dbServer,
-      sshTunnelPool,
-      sql,
-      params,
-      maxRows,
-      queryTimeoutMs,
-      connectTimeoutMs,
-      logger: plainLogger
-    });
+    const context = gateway.authenticate(getApiKey(request));
+    const responseFormat = normalizeResponseFormat(body?.responseFormat);
+    const result = await gateway.query(context, body);
 
     if (responseFormat === "raw") {
       return replyAsRawText(result);
@@ -117,10 +55,30 @@ export function buildServer(config: GatewayConfig) {
     return result;
   });
 
+  app.post("/schema", async (request) => {
+    const context = gateway.authenticate(getApiKey(request));
+    return gateway.inspectSchema(context, request.body);
+  });
+
+  app.post("/mcp", async (request, reply) => {
+    const context = gateway.authenticate(getApiKey(request));
+    await handleMcpPost(request, reply, gateway, context);
+  });
+
+  app.get("/mcp", async (request, reply) => {
+    gateway.authenticate(getApiKey(request));
+    return replyMcpMethodNotAllowed(reply);
+  });
+
+  app.delete("/mcp", async (request, reply) => {
+    gateway.authenticate(getApiKey(request));
+    return replyMcpMethodNotAllowed(reply);
+  });
+
   return app;
 }
 
-function replyAsRawText(result: Awaited<ReturnType<typeof executeQuery>>) {
+function replyAsRawText(result: QueryResult) {
   return result.columns.length === 1
     ? result.rows.map((row) => formatRawValue(row[result.columns[0]])).join("\n")
     : [
@@ -143,13 +101,6 @@ function formatRawValue(value: unknown): string {
     return JSON.stringify(value);
   }
   return String(value);
-}
-
-function resolveEffectiveLimit(serverLimit: number, clientLimit: number | undefined): number {
-  if (clientLimit === undefined) {
-    return serverLimit;
-  }
-  return Math.min(serverLimit, clientLimit);
 }
 
 function loadOpenApiDocument(): OpenApiDocument {

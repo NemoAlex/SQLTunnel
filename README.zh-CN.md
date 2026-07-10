@@ -16,6 +16,7 @@ SQLTunnel 特别适合给 Dify 等 AI 工具提供数据库查询能力：
 - 每个调用方对每个 db server 可以单独设置只读或写入权限。
 - 支持通过 SSH 隧道访问内网数据库。
 - 支持读取 SSH config，包括 Host alias 和 ProxyJump。
+- 提供 OpenAPI HTTP 接口和 Streamable HTTP MCP 接口。
 - 强制限制查询行数和查询超时，减少误操作影响。
 - 默认适合只读查询场景，写入需要显式授权。
 
@@ -30,7 +31,7 @@ flowchart LR
   Database[("私有数据库<br/>MySQL 或 PostgreSQL")]
   Padding[" "]
 
-  ExternalApp -->|"HTTP API /query"| SQLTunnel
+  ExternalApp -->|"HTTP API /query 或 MCP /mcp"| SQLTunnel
   SQLTunnel -->|"SSH tunnel 或直连"| Database
   Database ~~~ Padding
 
@@ -124,6 +125,37 @@ config/
 - 在 `gateway.yaml` 中使用相对路径引用 SSH 文件，例如 `sshConfigPath: ssh/config`、`privateKeyPath: ssh/id_rsa`。
 - 将整个 `config` 目录挂载到容器内的 `/app/config`；默认配置路径会对应为 `/app/config/gateway.yaml`。
 - API key、数据库密码、SSH 私钥等敏感信息放在 `config/gateway.yaml` 或 `config/ssh/` 文件中；外部调用方只需要拿到自己的 API key。
+
+## MCP 接口
+
+SQLTunnel 在 `POST /mcp` 提供无状态 Streamable HTTP MCP 接口，可供 Hermes、Claude Code、Cursor 等 MCP client 使用。它沿用 `gateway.yaml` 中的 client API key、db server 权限、查询行数和超时限制。
+
+MCP 提供四个语义明确的工具：
+
+- `list_db_servers`：列出当前 client 可以访问的 db servers 和最终生效的权限、行数及超时限制。
+- `list_database_tables`：列出指定数据库的 schema、表和视图。
+- `get_table_schema`：读取指定表或视图的字段、类型、默认值、注释和键。
+- `query_database`：执行一条 SQL；权限检查和查询限制与 `POST /query` 完全相同。
+
+Hermes 配置示例：
+
+```yaml
+mcp_servers:
+  sqltunnel:
+    url: "http://localhost:3000/mcp"
+    headers:
+      X-SQLTunnel-API-Key: "dev-read-key"
+    tools:
+      include: [list_db_servers, list_database_tables, get_table_schema, query_database]
+      resources: false
+      prompts: false
+```
+
+建议为 Agent 单独创建只读 client，并使用数据库自身的只读账号。远程部署时应通过 HTTPS 暴露 `/mcp`，不要在客户端配置中提交真实 API key。
+
+Schema 缓存时间可通过 `defaults.schemaCacheTtlMs` 调整；设为 `0` 可关闭缓存。通过 SQLTunnel 成功执行写入或 DDL 后，对应 db server 的 Schema 缓存会自动失效。
+
+OpenAPI 只暴露 `POST /query` 和 `POST /schema` 两个业务接口。`/schema` 通过 `operation` 支持列出数据库、列出表和获取表结构，避免在 Dify 等平台中生成过多工具。
 
 ## 备份功能
 

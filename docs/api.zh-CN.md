@@ -28,47 +28,79 @@
 
 成功响应：基于 `openapi.json` 的 JSON 内容，并自动加入当前请求地址对应的 `servers`。如果服务在反向代理后面，优先使用 `X-Forwarded-Proto` 和 `X-Forwarded-Host` 推断外部访问地址。
 
-### POST /db-servers
+### POST /schema
 
-返回当前 client 可以访问的 db servers。
+通过 `operation` 提供数据库、表和表结构元数据。请求 header `X-SQLTunnel-API-Key` 必填。
 
-请求 header：
-
-- `X-SQLTunnel-API-Key`：必填。client 的 API key。
-
-请求 body：可省略，也可以传空 JSON 对象。
-
-```json
-{}
-```
-
-成功响应：
+列出当前 client 可以访问的数据库：
 
 ```json
 {
-  "dbServers": [
+  "operation": "list_databases"
+}
+```
+
+响应包含 `dbServerId`、真实数据库名、数据库类型和权限：
+
+```json
+{
+  "operation": "list_databases",
+  "databases": [
     {
-      "id": "prod-postgres",
-      "type": "postgres",
-      "permission": "read",
-      "maxRows": 500,
-      "queryTimeoutMs": 5000,
-      "connectTimeoutMs": 10000,
-      "ssh": false
+      "dbServerId": "prod-postgres",
+      "databaseName": "app",
+      "databaseType": "postgres",
+      "permission": "read"
     }
   ]
 }
 ```
 
-响应字段：
+列出指定数据库的表和视图：
 
-- `dbServers[].id`：db server id，查询时作为 `dbServerId` 使用。
-- `dbServers[].type`：数据库类型，`mysql` 或 `postgres`。
-- `dbServers[].permission`：当前 client 对该 db server 的权限，`read` 或 `write`。
-- `dbServers[].maxRows`：该 client 在该 db server 上的最终最大返回行数。
-- `dbServers[].queryTimeoutMs`：该 client 在该 db server 上的最终查询超时时间。
-- `dbServers[].connectTimeoutMs`：该 db server 的最终 SSH tunnel 建立和数据库连接超时时间。
-- `dbServers[].ssh`：是否通过 SSH tunnel 连接。
+```json
+{
+  "operation": "list_tables",
+  "dbServerId": "prod-postgres",
+  "refresh": false
+}
+```
+
+响应只返回精简表清单，其中 `schemaName` 和 `tableName` 可直接用于下一步：
+
+```json
+{
+  "operation": "list_tables",
+  "dbServerId": "prod-postgres",
+  "databaseName": "app",
+  "databaseType": "postgres",
+  "tables": [
+    {
+      "schemaName": "public",
+      "tableName": "users",
+      "type": "table",
+      "comment": "Application users"
+    }
+  ],
+  "cached": false,
+  "cachedAt": "2026-07-10T00:00:00.000Z"
+}
+```
+
+获取一张表或视图的完整结构：
+
+```json
+{
+  "operation": "describe_table",
+  "dbServerId": "prod-postgres",
+  "schemaName": "public",
+  "tableName": "users"
+}
+```
+
+响应中的 `table` 包含 `columns`，每个字段包含类型、可空性、默认值、注释、主键和唯一约束信息。`unique` 表示字段参与主键或唯一约束；复合约束中的每个成员字段都会标记为 `true`。
+
+MySQL 的 `schemaName` 是配置的 database 名；PostgreSQL 使用实际 schema 名。Schema 默认缓存 5 分钟，`list_tables` 和 `describe_table` 都可传 `refresh: true` 强制刷新。缓存时间可通过 `defaults.schemaCacheTtlMs` 调整或关闭。通过 SQLTunnel 成功执行写入或 DDL 后，对应缓存会自动失效。单个数据库最多缓存 20000 个字段，超过时返回 `SCHEMA_TOO_LARGE`。
 
 ### POST /query
 

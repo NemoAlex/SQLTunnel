@@ -17,6 +17,7 @@
 - `defaults.maxRows`：默认最大返回行数。默认值：`1000`。
 - `defaults.queryTimeoutMs`：默认数据库查询超时时间。默认值：`10000`。
 - `defaults.connectTimeoutMs`：默认 SSH tunnel 建立和数据库连接超时时间。默认值：`10000`。
+- `defaults.schemaCacheTtlMs`：数据库 Schema 元数据的内存缓存时间。默认值：`300000`（5 分钟）；设为 `0` 可关闭缓存。
 
 ### SSH Servers
 

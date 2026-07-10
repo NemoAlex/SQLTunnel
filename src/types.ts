@@ -4,6 +4,7 @@ export interface DefaultsConfig {
   maxRows: number;
   queryTimeoutMs: number;
   connectTimeoutMs: number;
+  schemaCacheTtlMs: number;
 }
 
 export type ClientDbServerPermission = "read" | "write";
@@ -82,6 +83,100 @@ export interface QueryResult {
   durationMs: number;
   dbServerId: string;
 }
+
+export interface SchemaColumn {
+  name: string;
+  dataType: string;
+  nullable: boolean;
+  ordinalPosition: number;
+  primaryKey: boolean;
+  unique: boolean;
+  defaultValue?: string;
+  comment?: string;
+}
+
+export interface SchemaTable {
+  name: string;
+  type: "table" | "partitioned_table" | "view" | "materialized_view" | "foreign_table";
+  comment?: string;
+  columns: SchemaColumn[];
+}
+
+export interface DatabaseSchema {
+  name: string;
+  tables: SchemaTable[];
+}
+
+export interface DatabaseSchemaResult {
+  dbServerId: string;
+  databaseName: string;
+  databaseType: DatabaseType;
+  schemas: DatabaseSchema[];
+  cached: boolean;
+  cachedAt: string;
+}
+
+export interface SchemaTableSummary {
+  schemaName: string;
+  tableName: string;
+  type: SchemaTable["type"];
+  comment?: string;
+}
+
+export interface SchemaDatabaseSummary {
+  dbServerId: string;
+  databaseName: string;
+  databaseType: DatabaseType;
+  permission: ClientDbServerPermission;
+}
+
+export interface ListDatabasesSchemaRequest {
+  operation: "list_databases";
+}
+
+export interface ListTablesSchemaRequest {
+  operation: "list_tables";
+  dbServerId: string;
+  refresh?: boolean;
+}
+
+export interface DescribeTableSchemaRequest {
+  operation: "describe_table";
+  dbServerId: string;
+  schemaName: string;
+  tableName: string;
+  refresh?: boolean;
+}
+
+export type SchemaRequest = ListDatabasesSchemaRequest | ListTablesSchemaRequest | DescribeTableSchemaRequest;
+
+export interface ListDatabasesSchemaResult {
+  operation: "list_databases";
+  databases: SchemaDatabaseSummary[];
+}
+
+export interface ListTablesSchemaResult {
+  operation: "list_tables";
+  dbServerId: string;
+  databaseName: string;
+  databaseType: DatabaseType;
+  tables: SchemaTableSummary[];
+  cached: boolean;
+  cachedAt: string;
+}
+
+export interface DescribeTableSchemaResult {
+  operation: "describe_table";
+  dbServerId: string;
+  databaseName: string;
+  databaseType: DatabaseType;
+  schemaName: string;
+  table: SchemaTable;
+  cached: boolean;
+  cachedAt: string;
+}
+
+export type SchemaResult = ListDatabasesSchemaResult | ListTablesSchemaResult | DescribeTableSchemaResult;
 
 export interface BackupRetentionConfig {
   latest: number;

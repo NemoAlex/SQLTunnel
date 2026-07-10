@@ -16,6 +16,7 @@ SQLTunnel is especially useful for giving AI tools database query access:
 - Configure read or write permission per client and per db server.
 - Reach private databases through SSH tunnels.
 - Read SSH config, including Host aliases and ProxyJump.
+- Provide both an OpenAPI HTTP API and a Streamable HTTP MCP endpoint.
 - Enforce query row limits and timeouts.
 - Default to read-oriented access; writes require explicit permission.
 
@@ -30,7 +31,7 @@ flowchart LR
   Database[("Private database<br/>MySQL or PostgreSQL")]
   Padding[" "]
 
-  ExternalApp -->|"HTTP API /query"| SQLTunnel
+  ExternalApp -->|"HTTP API /query or MCP /mcp"| SQLTunnel
   SQLTunnel -->|"SSH tunnel or direct connection"| Database
   Database ~~~ Padding
 
@@ -124,6 +125,37 @@ Recommended setup:
 - Reference SSH files with paths relative to `gateway.yaml`, for example `sshConfigPath: ssh/config` and `privateKeyPath: ssh/id_rsa`.
 - Mount the whole `config` directory into the container as `/app/config`; the default config path becomes `/app/config/gateway.yaml`.
 - Keep API keys, database passwords, and SSH private keys in `config/gateway.yaml` or files under `config/ssh/`; external callers only need their own API key.
+
+## MCP Endpoint
+
+SQLTunnel provides a stateless Streamable HTTP MCP endpoint at `POST /mcp` for MCP clients such as Hermes, Claude Code, and Cursor. It uses the same client API keys, db server grants, row limits, and timeouts configured in `gateway.yaml`.
+
+MCP exposes four focused tools:
+
+- `list_db_servers`: lists the db servers available to the current client and their effective permissions and limits.
+- `list_database_tables`: lists schemas, tables, and views in one database.
+- `get_table_schema`: reads columns, types, defaults, comments, and keys for one table or view.
+- `query_database`: executes one SQL statement with the same authorization and query limits as `POST /query`.
+
+Hermes configuration example:
+
+```yaml
+mcp_servers:
+  sqltunnel:
+    url: "http://localhost:3000/mcp"
+    headers:
+      X-SQLTunnel-API-Key: "dev-read-key"
+    tools:
+      include: [list_db_servers, list_database_tables, get_table_schema, query_database]
+      resources: false
+      prompts: false
+```
+
+Create a dedicated read-only client for agents and use a read-only database account as defense in depth. Expose `/mcp` through HTTPS for remote deployments, and do not commit real API keys in client configuration files.
+
+Configure the schema cache with `defaults.schemaCacheTtlMs`; set it to `0` to disable caching. A successful write or DDL statement executed through SQLTunnel automatically invalidates the corresponding db server's schema cache.
+
+OpenAPI exposes only two business endpoints: `POST /query` and `POST /schema`. The `operation` field on `/schema` covers listing databases, listing tables, and describing one table, which keeps the imported tool surface small in platforms such as Dify.
 
 ## Backup
 

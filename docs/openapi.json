@@ -31,51 +31,6 @@
           }
         }
       },
-      "DbServer": {
-        "type": "object",
-        "required": ["id", "type", "permission", "maxRows", "queryTimeoutMs", "connectTimeoutMs", "ssh"],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string",
-            "enum": ["mysql", "postgres"]
-          },
-          "permission": {
-            "type": "string",
-            "enum": ["read", "write"]
-          },
-          "maxRows": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "queryTimeoutMs": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "connectTimeoutMs": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Timeout for SSH tunnel setup and database connection."
-          },
-          "ssh": {
-            "type": "boolean"
-          }
-        }
-      },
-      "DbServersResponse": {
-        "type": "object",
-        "required": ["dbServers"],
-        "properties": {
-          "dbServers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DbServer"
-            }
-          }
-        }
-      },
       "QueryRequest": {
         "type": "object",
         "required": ["dbServerId", "sql"],
@@ -129,6 +84,172 @@
           "dbServerId": {
             "type": "string"
           }
+        }
+      },
+      "ListDatabasesSchemaRequest": {
+        "type": "object",
+        "required": ["operation"],
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["list_databases"]
+          }
+        }
+      },
+      "ListTablesSchemaRequest": {
+        "type": "object",
+        "required": ["operation", "dbServerId"],
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["list_tables"]
+          },
+          "dbServerId": {
+            "type": "string"
+          },
+          "refresh": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "DescribeTableSchemaRequest": {
+        "type": "object",
+        "required": ["operation", "dbServerId", "schemaName", "tableName"],
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["describe_table"]
+          },
+          "dbServerId": { "type": "string" },
+          "schemaName": { "type": "string" },
+          "tableName": { "type": "string" },
+          "refresh": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "SchemaRequest": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/ListDatabasesSchemaRequest" },
+          { "$ref": "#/components/schemas/ListTablesSchemaRequest" },
+          { "$ref": "#/components/schemas/DescribeTableSchemaRequest" }
+        ],
+        "discriminator": {
+          "propertyName": "operation",
+          "mapping": {
+            "list_databases": "#/components/schemas/ListDatabasesSchemaRequest",
+            "list_tables": "#/components/schemas/ListTablesSchemaRequest",
+            "describe_table": "#/components/schemas/DescribeTableSchemaRequest"
+          }
+        }
+      },
+      "SchemaColumn": {
+        "type": "object",
+        "required": ["name", "dataType", "nullable", "ordinalPosition", "primaryKey", "unique"],
+        "properties": {
+          "name": { "type": "string" },
+          "dataType": { "type": "string" },
+          "nullable": { "type": "boolean" },
+          "ordinalPosition": { "type": "integer", "minimum": 1 },
+          "primaryKey": { "type": "boolean" },
+          "unique": {
+            "type": "boolean",
+            "description": "Whether the column participates in a primary-key or unique constraint."
+          },
+          "defaultValue": { "type": "string" },
+          "comment": { "type": "string" }
+        }
+      },
+      "SchemaTable": {
+        "type": "object",
+        "required": ["name", "type", "columns"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["table", "partitioned_table", "view", "materialized_view", "foreign_table"]
+          },
+          "comment": { "type": "string" },
+          "columns": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaColumn" }
+          }
+        }
+      },
+      "SchemaDatabaseSummary": {
+        "type": "object",
+        "required": ["dbServerId", "databaseName", "databaseType", "permission"],
+        "properties": {
+          "dbServerId": { "type": "string" },
+          "databaseName": { "type": "string" },
+          "databaseType": { "type": "string", "enum": ["mysql", "postgres"] },
+          "permission": { "type": "string", "enum": ["read", "write"] }
+        }
+      },
+      "SchemaTableSummary": {
+        "type": "object",
+        "required": ["schemaName", "tableName", "type"],
+        "properties": {
+          "schemaName": { "type": "string" },
+          "tableName": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["table", "partitioned_table", "view", "materialized_view", "foreign_table"]
+          },
+          "comment": { "type": "string" }
+        }
+      },
+      "ListDatabasesSchemaResponse": {
+        "type": "object",
+        "required": ["operation", "databases"],
+        "properties": {
+          "operation": { "type": "string", "enum": ["list_databases"] },
+          "databases": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaDatabaseSummary" }
+          }
+        }
+      },
+      "ListTablesSchemaResponse": {
+        "type": "object",
+        "required": ["operation", "dbServerId", "databaseName", "databaseType", "tables", "cached", "cachedAt"],
+        "properties": {
+          "operation": { "type": "string", "enum": ["list_tables"] },
+          "dbServerId": { "type": "string" },
+          "databaseName": { "type": "string" },
+          "databaseType": { "type": "string", "enum": ["mysql", "postgres"] },
+          "tables": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SchemaTableSummary" }
+          },
+          "cached": { "type": "boolean" },
+          "cachedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DescribeTableSchemaResponse": {
+        "type": "object",
+        "required": ["operation", "dbServerId", "databaseName", "databaseType", "schemaName", "table", "cached", "cachedAt"],
+        "properties": {
+          "operation": { "type": "string", "enum": ["describe_table"] },
+          "dbServerId": { "type": "string" },
+          "databaseName": { "type": "string" },
+          "databaseType": { "type": "string", "enum": ["mysql", "postgres"] },
+          "schemaName": { "type": "string" },
+          "table": { "$ref": "#/components/schemas/SchemaTable" },
+          "cached": { "type": "boolean" },
+          "cachedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SchemaResponse": {
+        "oneOf": [
+          { "$ref": "#/components/schemas/ListDatabasesSchemaResponse" },
+          { "$ref": "#/components/schemas/ListTablesSchemaResponse" },
+          { "$ref": "#/components/schemas/DescribeTableSchemaResponse" }
+        ],
+        "discriminator": {
+          "propertyName": "operation"
         }
       }
     },
@@ -206,37 +327,63 @@
     }
   },
   "paths": {
-    "/db-servers": {
+    "/schema": {
       "post": {
+        "operationId": "schema",
+        "summary": "List databases, list tables, or describe one table",
         "security": [
           {
             "SQLTunnelApiKey": []
           }
         ],
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {}
+                "$ref": "#/components/schemas/SchemaRequest"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Accessible db servers",
+            "description": "Database metadata selected by the request operation",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DbServersResponse"
+                  "$ref": "#/components/schemas/SchemaResponse"
                 }
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
           "401": {
             "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/DbServerNotFound"
+          },
+          "408": {
+            "$ref": "#/components/responses/QueryTimeout"
+          },
+          "413": {
+            "description": "Schema exceeds the supported column limit. Common code: SCHEMA_TOO_LARGE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "$ref": "#/components/responses/ConnectTimeout"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -246,6 +393,8 @@
     },
     "/query": {
       "post": {
+        "operationId": "query",
+        "summary": "Execute one authorized SQL statement",
         "security": [
           {
             "SQLTunnelApiKey": []
