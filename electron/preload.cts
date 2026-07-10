@@ -13,6 +13,7 @@ const channels = {
   startService: "desktop:start-service",
   stopService: "desktop:stop-service",
   restartService: "desktop:restart-service",
+  openSettings: "desktop:open-settings",
   openConfigFolder: "desktop:open-config-folder",
   snapshotChanged: "desktop:snapshot-changed"
 } as const;
@@ -26,6 +27,7 @@ const api: SQLTunnelDesktopApi = {
   startService: () => ipcRenderer.invoke(channels.startService) as Promise<DesktopSnapshot>,
   stopService: () => ipcRenderer.invoke(channels.stopService) as Promise<DesktopSnapshot>,
   restartService: () => ipcRenderer.invoke(channels.restartService) as Promise<DesktopSnapshot>,
+  openSettings: () => ipcRenderer.invoke(channels.openSettings) as Promise<void>,
   openConfigFolder: () => ipcRenderer.invoke(channels.openConfigFolder) as Promise<void>,
   onSnapshot: (listener: (snapshot: DesktopSnapshot) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, snapshot: DesktopSnapshot) => listener(snapshot);

@@ -17,6 +17,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 let mainWindow: BrowserWindow | undefined;
+let settingsWindow: BrowserWindow | undefined;
 let store: DesktopConfigStore;
 let runtime: ServiceRuntime;
 let config: GatewayConfig;
@@ -28,7 +29,7 @@ if (!hasSingleInstanceLock) {
 } else {
   app.on("second-instance", () => {
     if (!mainWindow) {
-      createWindow();
+      createMainWindow();
     }
     mainWindow?.show();
     mainWindow?.focus();
@@ -56,26 +57,29 @@ async function initializeDesktopApp(): Promise<void> {
   applyLoginItemPreference();
   registerIpcHandlers();
   installApplicationMenu();
-  createWindow();
+  createMainWindow();
 
   if (preferences.startOnLaunch) {
     await runtime.start().catch(() => undefined);
   }
 }
 
-function createWindow(): void {
+function createMainWindow(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     return;
   }
 
   mainWindow = new BrowserWindow({
-    width: 980,
-    height: 700,
-    minWidth: 760,
-    minHeight: 560,
+    width: 400,
+    height: 520,
+    minWidth: 360,
+    minHeight: 400,
+    maxWidth: 520,
     title: "SQLTunnel",
-    backgroundColor: "#f5f6f8",
+    backgroundColor: "#f4f5f7",
+    fullscreenable: false,
+    maximizable: false,
     show: false,
     webPreferences: {
       preload: path.join(dirname, "preload.cjs"),
@@ -90,12 +94,56 @@ function createWindow(): void {
     mainWindow = undefined;
   });
 
+  loadRenderer(mainWindow, "main");
+}
+
+function createSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.show();
+    settingsWindow.focus();
+    return;
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 920,
+    height: 700,
+    minWidth: 760,
+    minHeight: 560,
+    title: "SQLTunnel 设置",
+    backgroundColor: "#f5f6f8",
+    fullscreenable: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(dirname, "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  });
+
+  settingsWindow.once("ready-to-show", () => settingsWindow?.show());
+  settingsWindow.on("page-title-updated", (event) => {
+    event.preventDefault();
+    settingsWindow?.setTitle("SQLTunnel 设置");
+  });
+  settingsWindow.on("closed", () => {
+    settingsWindow = undefined;
+  });
+  loadRenderer(settingsWindow, "settings");
+}
+
+function loadRenderer(browserWindow: BrowserWindow, windowKind: "main" | "settings"): void {
   const developmentUrl = process.env.VITE_DEV_SERVER_URL;
   if (developmentUrl) {
-    void mainWindow.loadURL(developmentUrl);
-  } else {
-    void mainWindow.loadFile(path.join(dirname, "..", "..", "dist-renderer", "index.html"));
+    const url = new URL(developmentUrl);
+    url.searchParams.set("window", windowKind);
+    void browserWindow.loadURL(url.toString());
+    return;
   }
+  void browserWindow.loadFile(
+    path.join(dirname, "..", "..", "dist-renderer", "index.html"),
+    { query: { window: windowKind } }
+  );
 }
 
 function registerIpcHandlers(): void {
@@ -124,6 +172,9 @@ function registerIpcHandlers(): void {
     await runtime.restart();
     return getSnapshot();
   });
+  ipcMain.handle(DESKTOP_CHANNELS.openSettings, () => {
+    createSettingsWindow();
+  });
   ipcMain.handle(DESKTOP_CHANNELS.openConfigFolder, async () => {
     const error = await shell.openPath(store.dataDirectory);
     if (error) {
@@ -137,16 +188,21 @@ function getSnapshot(): DesktopSnapshot {
     config,
     preferences,
     service: runtime.getStatus(),
+    connections: runtime.getConnections(config),
     logs: runtime.getLogs(),
     configPath: store.configPath
   };
 }
 
 function broadcastSnapshot(): void {
-  if (!runtime || !store || !mainWindow || mainWindow.isDestroyed()) {
+  if (!runtime || !store) {
     return;
   }
-  mainWindow.webContents.send(DESKTOP_CHANNELS.snapshotChanged, getSnapshot());
+  for (const browserWindow of [mainWindow, settingsWindow]) {
+    if (browserWindow && !browserWindow.isDestroyed()) {
+      browserWindow.webContents.send(DESKTOP_CHANNELS.snapshotChanged, getSnapshot());
+    }
+  }
 }
 
 function applyLoginItemPreference(): void {
@@ -168,6 +224,12 @@ function installApplicationMenu(): void {
       label: app.name,
       submenu: [
         { role: "about" },
+        { type: "separator" },
+        {
+          label: "设置…",
+          accelerator: "CommandOrControl+,",
+          click: () => createSettingsWindow()
+        },
         { type: "separator" },
         { role: "hide" },
         { role: "hideOthers" },
@@ -201,7 +263,7 @@ function installApplicationMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-app.on("activate", () => createWindow());
+app.on("activate", () => createMainWindow());
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

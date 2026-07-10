@@ -30,7 +30,12 @@ import type {
   GatewayConfig,
   SshServerConfig
 } from "../../src/types.js";
-import type { DesktopPreferences, DesktopSnapshot, ServicePhase } from "../../shared/desktop.js";
+import type {
+  ConnectionIndicator,
+  DesktopPreferences,
+  DesktopSnapshot,
+  ServicePhase
+} from "../../shared/desktop.js";
 
 type Section = "databases" | "ssh" | "clients" | "settings";
 type Notice = { kind: "success" | "error" | "info"; message: string };
@@ -55,6 +60,10 @@ const statusLabels: Record<ServicePhase, string> = {
 };
 
 export default function App() {
+  const windowKind = useMemo(
+    () => new URLSearchParams(window.location.search).get("window") === "settings" ? "settings" : "main",
+    []
+  );
   const [snapshot, setSnapshot] = useState<DesktopSnapshot>();
   const [config, setConfig] = useState<GatewayConfig>();
   const [preferences, setPreferences] = useState<DesktopPreferences>();
@@ -63,6 +72,10 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>();
   const dirtyRef = useRef(false);
+
+  useEffect(() => {
+    document.title = windowKind === "settings" ? "SQLTunnel 设置" : "SQLTunnel";
+  }, [windowKind]);
 
   useEffect(() => {
     dirtyRef.current = dirty;
@@ -200,98 +213,271 @@ export default function App() {
 
   const isTransitioning = snapshot.service.phase === "starting" || snapshot.service.phase === "stopping";
 
+  if (windowKind === "main") {
+    return (
+      <MainWindow
+        snapshot={snapshot}
+        busy={busy || isTransitioning}
+        notice={notice}
+        onToggle={() => void toggleService()}
+        onDismissNotice={() => setNotice(undefined)}
+      />
+    );
+  }
+
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="window-drag-region" />
-        <div className="service-summary">
+    <SettingsWindow
+      snapshot={snapshot}
+      config={config}
+      preferences={preferences}
+      section={section}
+      dirty={dirty}
+      busy={busy}
+      notice={notice}
+      onSectionChange={setSection}
+      onConfigChange={markConfig}
+      onPreferencesChange={markPreferences}
+      onSave={() => void handleSave()}
+      onSaveAndRestart={() => void restartService()}
+      onDismissNotice={() => setNotice(undefined)}
+    />
+  );
+}
+
+function MainWindow({ snapshot, busy, notice, onToggle, onDismissNotice }: {
+  snapshot: DesktopSnapshot;
+  busy: boolean;
+  notice?: Notice;
+  onToggle: () => void;
+  onDismissNotice: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"status" | "logs">("status");
+  const running = snapshot.service.phase === "running";
+  return (
+    <div className="main-window-shell">
+      <section className="gateway-control">
+        <div className="gateway-copy">
           <span className={`status-dot ${snapshot.service.phase}`} />
           <div>
-            <span className="service-label">{statusLabels[snapshot.service.phase]}</span>
+            <strong>{statusLabels[snapshot.service.phase]}</strong>
             <button
-              className="endpoint-button"
+              className="main-endpoint"
               disabled={!snapshot.service.url}
-              onClick={() => void copyText(snapshot.service.url ?? "", setNotice)}
-              title="复制服务地址"
+              onClick={() => void navigator.clipboard.writeText(snapshot.service.url ?? "")}
             >
-              {snapshot.service.url ?? `127.0.0.1:${preferences.port}`}
+              {snapshot.service.url ?? `127.0.0.1:${snapshot.preferences.port}`}
               <Copy size={12} />
             </button>
           </div>
         </div>
+        <button
+          className={`main-power-switch ${running ? "on" : ""}`}
+          aria-label={running ? "停止服务" : "启动服务"}
+          aria-pressed={running}
+          disabled={busy}
+          onClick={onToggle}
+        >
+          <span><Power size={14} /></span>
+        </button>
+      </section>
 
-        <div className="topbar-actions">
-          {snapshot.service.phase === "running" && dirty && (
-            <button className="button ghost compact" onClick={() => void restartService()} disabled={busy}>
-              <RefreshCw size={15} />
-              保存并重启
-            </button>
-          )}
-          {dirty && snapshot.service.phase !== "running" && (
-            <button className="button secondary compact" onClick={() => void handleSave()} disabled={busy}>
-              <Save size={15} />保存更改
-            </button>
-          )}
-          <button
-            className={`service-switch ${snapshot.service.phase === "running" ? "on" : ""}`}
-            aria-label={snapshot.service.phase === "running" ? "停止服务" : "启动服务"}
-            aria-pressed={snapshot.service.phase === "running"}
-            disabled={busy || isTransitioning}
-            onClick={() => void toggleService()}
-          >
-            <span className="switch-track"><span className="switch-thumb"><Power size={13} /></span></span>
-            <span>{snapshot.service.phase === "running" ? "停止" : "启动"}</span>
-          </button>
-        </div>
-      </header>
-
-      <nav className="tabbar" aria-label="配置导航">
-        <div className="tabs">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const count = item.id === "databases"
-              ? config.dbServers.length
-              : item.id === "ssh"
-                ? config.sshServers.length
-                : item.id === "clients"
-                  ? config.clients.length
-                  : undefined;
-            return (
-              <button key={item.id} className={`tab ${section === item.id ? "active" : ""}`} onClick={() => setSection(item.id)}>
-                <Icon size={14} />
-                {item.label}
-                {count !== undefined && count > 0 && <span>{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-        <div className="local-only"><ShieldCheck size={13} />仅本机访问</div>
-        <button className="config-folder" onClick={() => void window.sqlTunnel.openConfigFolder()} title={snapshot.configPath}>
-          <FolderOpen size={13} />配置文件
+      <nav className="main-tabs" aria-label="主窗口内容">
+        <button className={activeTab === "status" ? "active" : ""} onClick={() => setActiveTab("status")}>
+          <Server size={13} />状态
+        </button>
+        <button className={activeTab === "logs" ? "active" : ""} onClick={() => setActiveTab("logs")}>
+          <Activity size={13} />日志
+          {snapshot.logs.length > 0 && <span>{snapshot.logs.length}</span>}
         </button>
       </nav>
 
-      <main className="content">
-        {section === "databases" && <DatabaseEditor config={config} onChange={markConfig} />}
-        {section === "ssh" && <SshEditor config={config} onChange={markConfig} />}
-        {section === "clients" && <ClientEditor config={config} onChange={markConfig} />}
-        {section === "settings" && (
-          <SettingsEditor
-            config={config}
-            preferences={preferences}
-            onConfigChange={markConfig}
-            onPreferencesChange={markPreferences}
-          />
-        )}
-      </main>
-
-      {notice && (
-        <div className={`toast ${notice.kind}`} role="status">
-          {notice.kind === "success" ? <Check size={17} /> : notice.kind === "error" ? <AlertCircle size={17} /> : <Activity size={17} />}
-          <span>{notice.message}</span>
-          <button onClick={() => setNotice(undefined)} aria-label="关闭提示"><X size={14} /></button>
-        </div>
+      {activeTab === "status" ? (
+        <main className="connection-overview">
+          <ConnectionGroup title="数据库服务器" connections={snapshot.connections.databases} emptyLabel="尚未配置数据库" />
+          <ConnectionGroup title="SSH 连接" connections={snapshot.connections.sshServers} emptyLabel="尚未配置 SSH" />
+        </main>
+      ) : (
+        <MainLogView logs={snapshot.logs} />
       )}
+
+      <footer className="main-window-footer">
+        <div><ShieldCheck size={13} />仅本机访问</div>
+        <button onClick={() => void window.sqlTunnel.openSettings()}><Settings2 size={14} />设置…</button>
+      </footer>
+      <NoticeToast notice={notice} onDismiss={onDismissNotice} />
+    </div>
+  );
+}
+
+function MainLogView({ logs }: { logs: DesktopSnapshot["logs"] }) {
+  const consoleRef = useRef<HTMLTextAreaElement>(null);
+  const output = useMemo(() => [...logs]
+    .reverse()
+    .map((entry) => `${formatLogTimestamp(entry.timestamp)} ${entry.level.toUpperCase().padEnd(7)} ${entry.message}`)
+    .join("\n"), [logs]);
+
+  useEffect(() => {
+    const consoleElement = consoleRef.current;
+    if (consoleElement) {
+      consoleElement.scrollTop = consoleElement.scrollHeight;
+    }
+  }, [output]);
+
+  return (
+    <main className="main-log-view">
+      <div className="main-log-toolbar">
+        <span>运行日志</span>
+        <small>{logs.length} 条</small>
+      </div>
+      <textarea
+        ref={consoleRef}
+        className="main-log-console"
+        aria-label="运行日志"
+        readOnly
+        spellCheck={false}
+        value={output}
+        placeholder="服务运行后，日志会显示在这里。"
+      />
+    </main>
+  );
+}
+
+function formatLogTimestamp(timestamp: string): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(new Date(timestamp)).replaceAll("/", "-");
+}
+
+function ConnectionGroup({ title, connections, emptyLabel }: {
+  title: string;
+  connections: ConnectionIndicator[];
+  emptyLabel: string;
+}) {
+  return (
+    <section className="connection-group">
+      <header><strong>{title}</strong><span>{connections.length}</span></header>
+      <div className="connection-list">
+        {connections.length === 0 ? (
+          <div className="connection-empty">{emptyLabel}</div>
+        ) : connections.map((connection) => <ConnectionRow key={connection.id} connection={connection} />)}
+      </div>
+    </section>
+  );
+}
+
+function ConnectionRow({ connection }: { connection: ConnectionIndicator }) {
+  const labels = {
+    disconnected: "未连接",
+    ready: "已连接",
+    active: "请求中",
+    connected: "已连接"
+  } as const;
+  return (
+    <div className="connection-row">
+      <span className={`connection-dot ${connection.state}`} />
+      <div><strong>{connection.label}</strong><small>{connection.detail}</small></div>
+      <span className="connection-label">{labels[connection.state]}</span>
+    </div>
+  );
+}
+
+function SettingsWindow({
+  snapshot,
+  config,
+  preferences,
+  section,
+  dirty,
+  busy,
+  notice,
+  onSectionChange,
+  onConfigChange,
+  onPreferencesChange,
+  onSave,
+  onSaveAndRestart,
+  onDismissNotice
+}: {
+  snapshot: DesktopSnapshot;
+  config: GatewayConfig;
+  preferences: DesktopPreferences;
+  section: Section;
+  dirty: boolean;
+  busy: boolean;
+  notice?: Notice;
+  onSectionChange: (section: Section) => void;
+  onConfigChange: EditorProps["onChange"];
+  onPreferencesChange: (updater: (current: DesktopPreferences) => DesktopPreferences) => void;
+  onSave: () => void;
+  onSaveAndRestart: () => void;
+  onDismissNotice: () => void;
+}) {
+  const descriptions: Record<Section, string> = {
+    databases: "MySQL 与 PostgreSQL",
+    ssh: "跳板机与密钥",
+    clients: "API Key 与授权",
+    settings: "端口与默认限制"
+  };
+  return (
+    <div className="settings-shell">
+      <aside className="settings-sidebar">
+        <div className="settings-title"><Settings2 size={18} /><strong>设置</strong></div>
+        <nav aria-label="设置分类">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button key={item.id} className={section === item.id ? "active" : ""} onClick={() => onSectionChange(item.id)}>
+                <Icon size={16} />
+                <span><strong>{item.label}</strong><small>{descriptions[item.id]}</small></span>
+                <ChevronRight size={13} />
+              </button>
+            );
+          })}
+        </nav>
+        <button className="settings-config-folder" onClick={() => void window.sqlTunnel.openConfigFolder()} title={snapshot.configPath}>
+          <FolderOpen size={14} /><span>打开配置目录</span>
+        </button>
+      </aside>
+      <section className="settings-workspace">
+        <main className="settings-content">
+          {section === "databases" && <DatabaseEditor config={config} onChange={onConfigChange} />}
+          {section === "ssh" && <SshEditor config={config} onChange={onConfigChange} />}
+          {section === "clients" && <ClientEditor config={config} onChange={onConfigChange} />}
+          {section === "settings" && (
+            <SettingsEditor
+              config={config}
+              preferences={preferences}
+              onConfigChange={onConfigChange}
+              onPreferencesChange={onPreferencesChange}
+            />
+          )}
+        </main>
+        <footer className="settings-footer">
+          <span>{dirty ? "有尚未保存的更改" : "配置已保存到本机"}</span>
+          {dirty && (
+            <button className="button primary" disabled={busy} onClick={snapshot.service.phase === "running" ? onSaveAndRestart : onSave}>
+              {snapshot.service.phase === "running" ? <RefreshCw size={15} /> : <Save size={15} />}
+              {snapshot.service.phase === "running" ? "保存并重启" : "保存更改"}
+            </button>
+          )}
+        </footer>
+      </section>
+      <NoticeToast notice={notice} onDismiss={onDismissNotice} />
+    </div>
+  );
+}
+
+function NoticeToast({ notice, onDismiss }: { notice?: Notice; onDismiss: () => void }) {
+  if (!notice) return null;
+  return (
+    <div className={`toast ${notice.kind}`} role="status">
+      {notice.kind === "success" ? <Check size={17} /> : notice.kind === "error" ? <AlertCircle size={17} /> : <Activity size={17} />}
+      <span>{notice.message}</span>
+      <button onClick={onDismiss} aria-label="关闭提示"><X size={14} /></button>
     </div>
   );
 }
@@ -629,12 +815,6 @@ function generateApiKey(): string {
 
 function emptyAsUndefined(value: string): string | undefined {
   return value.trim() ? value : undefined;
-}
-
-async function copyText(value: string, setNotice: (notice: Notice) => void): Promise<void> {
-  if (!value) return;
-  await navigator.clipboard.writeText(value);
-  setNotice({ kind: "success", message: "服务地址已复制" });
 }
 
 function getErrorMessage(error: unknown): string {

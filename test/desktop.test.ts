@@ -10,6 +10,8 @@ import {
 } from "../electron/config-store.js";
 import { ServiceRuntime } from "../electron/service-runtime.js";
 import { loadConfig } from "../src/config.js";
+import { GatewayService } from "../src/gateway-service.js";
+import { buildServer } from "../src/server.js";
 import type { GatewayConfig } from "../src/types.js";
 
 function createStore(t: test.TestContext): DesktopConfigStore {
@@ -80,6 +82,22 @@ test("desktop store rejects invalid config without replacing the saved file", (t
 
 test("desktop runtime starts the real Fastify gateway and stops cleanly", async (t) => {
   const store = createStore(t);
+  store.saveGatewayConfig({
+    ...store.loadGatewayConfig(),
+    sshServers: [{ id: "bastion", host: "bastion.example.com", port: 22, username: "deploy" }],
+    dbServers: [{
+      id: "app-db",
+      type: "postgres",
+      sshServerId: "bastion",
+      database: {
+        host: "127.0.0.1",
+        port: 5432,
+        user: "app",
+        password: "secret",
+        database: "app"
+      }
+    }]
+  });
   const port = await reservePort();
   const runtime = new ServiceRuntime(
     store.configPath,
@@ -95,9 +113,106 @@ test("desktop runtime starts the real Fastify gateway and stops cleanly", async 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { status: "ok" });
   assert.equal(runtime.getStatus().phase, "running");
+  assert.equal(runtime.getConnections(store.loadGatewayConfig()).databases[0]?.state, "disconnected");
+  assert.equal(runtime.getConnections(store.loadGatewayConfig()).sshServers[0]?.state, "disconnected");
 
   await runtime.stop();
   assert.equal(runtime.getStatus().phase, "stopped");
+  assert.equal(runtime.getConnections(store.loadGatewayConfig()).databases[0]?.state, "disconnected");
+});
+
+test("gateway reports database activity and the connection result around each request", async () => {
+  const events: Array<{ id: string; active: boolean; succeeded?: boolean }> = [];
+  const config: GatewayConfig = {
+    defaults: {
+      maxRows: 100,
+      queryTimeoutMs: 1000,
+      connectTimeoutMs: 1000,
+      schemaCacheTtlMs: 0
+    },
+    sshServers: [],
+    dbServers: [{
+      id: "app-db",
+      type: "postgres",
+      database: {
+        host: "127.0.0.1",
+        port: 5432,
+        user: "app",
+        password: "secret",
+        database: "app"
+      }
+    }],
+    clients: [{
+      id: "agent",
+      apiKey: "test-key",
+      dbServers: [{ serverId: "app-db", permission: "read" }]
+    }]
+  };
+  const gateway = new GatewayService(config, {
+    executeQuery: async () => ({
+      columns: ["value"],
+      rows: [{ value: 1 }],
+      rowCount: 1,
+      durationMs: 1,
+      dbServerId: "app-db"
+    }),
+    onDatabaseActivity: (id, active, succeeded) => events.push({ id, active, succeeded })
+  });
+
+  const context = gateway.authenticate("test-key");
+  await gateway.query(context, { dbServerId: "app-db", sql: "select 1" });
+
+  assert.deepEqual(events, [
+    { id: "app-db", active: true, succeeded: undefined },
+    { id: "app-db", active: false, succeeded: true }
+  ]);
+
+  const failedEvents: Array<{ id: string; active: boolean; succeeded?: boolean }> = [];
+  const failingGateway = new GatewayService(config, {
+    executeQuery: async () => {
+      throw new Error("database offline");
+    },
+    onDatabaseActivity: (id, active, succeeded) => failedEvents.push({ id, active, succeeded })
+  });
+
+  await assert.rejects(
+    () => failingGateway.query(failingGateway.authenticate("test-key"), {
+      dbServerId: "app-db",
+      sql: "select 1"
+    }),
+    /database offline/
+  );
+  assert.deepEqual(failedEvents, [
+    { id: "app-db", active: true, succeeded: undefined },
+    { id: "app-db", active: false, succeeded: false }
+  ]);
+});
+
+test("server forwards completed HTTP requests to the desktop log callback", async (t) => {
+  const requests: Array<{ method: string; url: string; statusCode: number; durationMs: number }> = [];
+  const app = buildServer({
+    defaults: {
+      maxRows: 100,
+      queryTimeoutMs: 1000,
+      connectTimeoutMs: 1000,
+      schemaCacheTtlMs: 0
+    },
+    sshServers: [],
+    dbServers: [],
+    clients: []
+  }, {
+    onHttpRequest: (entry) => requests.push(entry)
+  });
+  t.after(() => app.close());
+
+  const response = await app.inject({ method: "GET", url: "/health" });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0]?.method, "GET");
+  assert.equal(requests[0]?.url, "/health");
+  assert.equal(requests[0]?.statusCode, 200);
+  assert.ok((requests[0]?.durationMs ?? -1) >= 0);
 });
 
 async function reservePort(): Promise<number> {

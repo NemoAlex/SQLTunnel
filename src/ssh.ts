@@ -14,6 +14,8 @@ interface PlainLogger {
   info(message: string): void;
 }
 
+export type SshConnectionStatusListener = (sshServerId: string, connected: boolean) => void;
+
 const DEFAULT_IDLE_TIMEOUT_MS = 60_000;
 
 interface PoolEntry {
@@ -27,7 +29,11 @@ export class SshTunnelPool {
   private readonly sshServersById: Map<string, SshServerConfig>;
   private readonly entries = new Map<string, PoolEntry>();
 
-  constructor(sshServers: SshServerConfig[], private readonly logger?: PlainLogger) {
+  constructor(
+    sshServers: SshServerConfig[],
+    private readonly logger?: PlainLogger,
+    private readonly onConnectionStatus?: SshConnectionStatusListener
+  ) {
     this.sshServersById = new Map(sshServers.map((sshServer) => [sshServer.id, sshServer]));
   }
 
@@ -107,6 +113,7 @@ export class SshTunnelPool {
       );
       entry.connecting = undefined;
       this.logger?.info(formatSshTunnelOpenedLog(sshServer.id));
+      this.onConnectionStatus?.(sshServer.id, true);
       for (const client of entry.clients) {
         client.once("close", () => {
           if (this.entries.get(sshServer.id) === entry) {
@@ -148,6 +155,7 @@ export class SshTunnelPool {
     }
     this.entries.delete(sshServerId);
     this.logger?.info(formatSshTunnelClosedLog(sshServerId));
+    this.onConnectionStatus?.(sshServerId, false);
     for (const client of [...entry.clients].reverse()) {
       client.end();
     }

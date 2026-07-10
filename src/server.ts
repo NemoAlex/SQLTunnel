@@ -16,6 +16,16 @@ type OpenApiDocument = Record<string, unknown> & {
 
 export interface BuildServerOptions {
   openApiPath?: string;
+  onDatabaseActivity?: (dbServerId: string, active: boolean, succeeded?: boolean) => void;
+  onSshConnectionStatus?: (sshServerId: string, connected: boolean) => void;
+  onHttpRequest?: (entry: HttpRequestLogEntry) => void;
+}
+
+export interface HttpRequestLogEntry {
+  method: string;
+  url: string;
+  statusCode: number;
+  durationMs: number;
 }
 
 export function buildServer(config: GatewayConfig, options: BuildServerOptions = {}) {
@@ -23,13 +33,25 @@ export function buildServer(config: GatewayConfig, options: BuildServerOptions =
     logger: true,
     genReqId: () => randomUUID()
   });
-  const gateway = new GatewayService(config);
+  const gateway = new GatewayService(config, {
+    onDatabaseActivity: options.onDatabaseActivity,
+    onSshConnectionStatus: options.onSshConnectionStatus
+  });
   const openApiDocument = loadOpenApiDocument(options.openApiPath);
 
   app.register(sensible);
 
   app.addHook("onClose", async () => {
     await gateway.close();
+  });
+
+  app.addHook("onResponse", async (request, reply) => {
+    options.onHttpRequest?.({
+      method: request.method,
+      url: request.url,
+      statusCode: reply.statusCode,
+      durationMs: reply.elapsedTime
+    });
   });
 
   app.setErrorHandler((error, request, reply) => {

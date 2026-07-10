@@ -24,10 +24,25 @@ export interface DesktopLogEntry {
   message: string;
 }
 
+export type ConnectionIndicatorState = "disconnected" | "ready" | "active" | "connected";
+
+export interface ConnectionIndicator {
+  id: string;
+  label: string;
+  detail: string;
+  state: ConnectionIndicatorState;
+}
+
+export interface ConnectionOverview {
+  databases: ConnectionIndicator[];
+  sshServers: ConnectionIndicator[];
+}
+
 export interface DesktopSnapshot {
   config: GatewayConfig;
   preferences: DesktopPreferences;
   service: ServiceStatus;
+  connections: ConnectionOverview;
   logs: DesktopLogEntry[];
   configPath: string;
 }
@@ -39,6 +54,7 @@ export interface SQLTunnelDesktopApi {
   startService(): Promise<DesktopSnapshot>;
   stopService(): Promise<DesktopSnapshot>;
   restartService(): Promise<DesktopSnapshot>;
+  openSettings(): Promise<void>;
   openConfigFolder(): Promise<void>;
   onSnapshot(listener: (snapshot: DesktopSnapshot) => void): () => void;
 }
@@ -50,6 +66,7 @@ export const DESKTOP_CHANNELS = {
   startService: "desktop:start-service",
   stopService: "desktop:stop-service",
   restartService: "desktop:restart-service",
+  openSettings: "desktop:open-settings",
   openConfigFolder: "desktop:open-config-folder",
   snapshotChanged: "desktop:snapshot-changed"
 } as const;

@@ -1,5 +1,6 @@
 import { AuthService, isReadOnlySql } from "./auth.js";
 import { executeQuery } from "./db.js";
+import type { ExecuteQueryOptions } from "./db.js";
 import { GatewayError } from "./errors.js";
 import { getSchemaSql, MAX_SCHEMA_COLUMNS, normalizeDatabaseSchema } from "./schema.js";
 import { normalizeParams, normalizeSql, resolveMaxRows } from "./sql.js";
@@ -20,6 +21,12 @@ const plainLogger = {
   info: (message: string) => console.info(message)
 };
 
+export interface GatewayServiceDependencies {
+  executeQuery?: typeof executeQuery;
+  onDatabaseActivity?: (dbServerId: string, active: boolean, succeeded?: boolean) => void;
+  onSshConnectionStatus?: (sshServerId: string, connected: boolean) => void;
+}
+
 export class GatewayService {
   private readonly auth: AuthService;
   private readonly dbServersById;
@@ -28,11 +35,16 @@ export class GatewayService {
   private readonly schemaCache = new Map<string, { value: DatabaseSchemaResult; expiresAt: number }>();
   private readonly schemaLoads = new Map<string, Promise<DatabaseSchemaResult>>();
   private readonly schemaGenerations = new Map<string, number>();
+  private readonly activeDatabaseRequests = new Map<string, number>();
 
-  constructor(private readonly config: GatewayConfig, dependencies: { executeQuery?: typeof executeQuery } = {}) {
+  constructor(private readonly config: GatewayConfig, private readonly dependencies: GatewayServiceDependencies = {}) {
     this.auth = new AuthService(config);
     this.dbServersById = new Map(config.dbServers.map((dbServer) => [dbServer.id, dbServer]));
-    this.sshTunnelPool = new SshTunnelPool(config.sshServers, plainLogger);
+    this.sshTunnelPool = new SshTunnelPool(
+      config.sshServers,
+      plainLogger,
+      dependencies.onSshConnectionStatus
+    );
     this.executeQueryFn = dependencies.executeQuery ?? executeQuery;
   }
 
@@ -89,7 +101,7 @@ export class GatewayService {
 
     this.auth.assertWriteAllowed(grant, sql);
 
-    const result = await this.executeQueryFn({
+    const result = await this.executeTrackedQuery({
       dbServer,
       sshTunnelPool: this.sshTunnelPool,
       sql,
@@ -268,7 +280,7 @@ export class GatewayService {
       dbServer.queryTimeoutMs ?? this.config.defaults.queryTimeoutMs,
       clientQueryTimeoutMs
     );
-    const result = await this.executeQueryFn({
+    const result = await this.executeTrackedQuery({
       dbServer,
       sshTunnelPool: this.sshTunnelPool,
       sql: getSchemaSql(dbServer.type),
@@ -303,6 +315,30 @@ export class GatewayService {
   private invalidateSchemaCache(dbServerId: string): void {
     this.schemaCache.delete(dbServerId);
     this.schemaGenerations.set(dbServerId, (this.schemaGenerations.get(dbServerId) ?? 0) + 1);
+  }
+
+  private async executeTrackedQuery(options: ExecuteQueryOptions): Promise<QueryResult> {
+    const dbServerId = options.dbServer.id;
+    const activeCount = (this.activeDatabaseRequests.get(dbServerId) ?? 0) + 1;
+    this.activeDatabaseRequests.set(dbServerId, activeCount);
+    if (activeCount === 1) {
+      this.dependencies.onDatabaseActivity?.(dbServerId, true);
+    }
+
+    let succeeded = false;
+    try {
+      const result = await this.executeQueryFn(options);
+      succeeded = true;
+      return result;
+    } finally {
+      const remaining = Math.max(0, (this.activeDatabaseRequests.get(dbServerId) ?? 1) - 1);
+      if (remaining === 0) {
+        this.activeDatabaseRequests.delete(dbServerId);
+        this.dependencies.onDatabaseActivity?.(dbServerId, false, succeeded);
+      } else {
+        this.activeDatabaseRequests.set(dbServerId, remaining);
+      }
+    }
   }
 }
 

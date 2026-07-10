@@ -50,7 +50,7 @@ npm run start
 
 ### macOS 桌面 App
 
-仓库包含一个轻量的单窗口 Electron App，可图形化管理数据库、SSH 隧道、客户端授权和全局限制，并通过窗口顶部的开关启动或停止本地网关。
+仓库包含一个轻量的 Electron App：小型主窗口用于启停网关并显示数据库与 SSH 连接状态，独立设置窗口用于图形化管理数据库、SSH 隧道、客户端授权和全局限制。
 
 ```bash
 npm install

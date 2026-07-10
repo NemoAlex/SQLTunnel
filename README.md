@@ -50,7 +50,7 @@ npm run start
 
 ### macOS Desktop App
 
-The repository includes a compact single-window Electron app for graphically managing databases, SSH tunnels, client grants, and global limits. The switch at the top starts and stops the local gateway.
+The repository includes a compact Electron app: a small status window starts and stops the gateway and shows database/SSH connection state, while a separate settings window manages databases, tunnels, client grants, and global limits.
 
 ```bash
 npm install
