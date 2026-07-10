@@ -37,7 +37,7 @@ dbServers: # Required. Database servers that clients can access.
 
 clients: # Required. API clients and their per-db-server permissions.
   - id: analytics-app
-    apiKey: dev-read-key # Required. Sent by callers in X-SQLTunnel-API-Key header.
+    apiKey: dev-read-key # Required. Sent by callers as an Authorization Bearer token.
     dbServers:
       - serverId: prod-postgres
         permission: read # Optional. read or write. Defaults to read.

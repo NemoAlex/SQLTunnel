@@ -150,7 +150,7 @@ clients:
 字段说明：
 
 - `id`：必填。client id，用来标识调用方。
-- `apiKey`：必填。调用方请求 SQLTunnel 时使用的 API key，放在 `X-SQLTunnel-API-Key` header 中。
+- `apiKey`：必填。调用方请求 SQLTunnel 时使用的 API key，通过 `Authorization: Bearer <SQLTUNNEL_API_KEY>` 发送。
 - `dbServers`：必填。该 client 可以访问的 db server 列表。
 - `dbServers[].serverId`：必填。引用 `dbServers[].id`。
 - `dbServers[].permission`：可选。权限，支持 `read` 或 `write`，默认 `read`。`read` 只允许只读 SQL；`write` 允许读写 SQL。

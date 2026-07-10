@@ -1,317 +1,159 @@
-# SQLTunnel Dify Setup Guide
+# Using SQLTunnel MCP with Dify
 
-[Back to README](../README.md) | [Configuration reference](configuration.md) | [API reference](api.md)
+[Back to README](../README.md) | [API reference](api.md) | [Configuration reference](configuration.md)
 
-This guide focuses on the Dify-side setup for calling SQLTunnel. On the SQLTunnel side, prepare:
+This guide connects SQLTunnel to Dify as a remote HTTP MCP server. Do not import `openapi.json`; Dify discovers SQLTunnel's tools through MCP.
 
-- A SQLTunnel URL reachable from Dify, for example `http://sqltunnel:3000`.
-- A Dify-specific `apiKey`.
-- The `dbServerId` values Dify may use.
+## Prerequisites
 
-SQLTunnel API keys are sent in the `X-SQLTunnel-API-Key` request header.
+Prepare:
 
-Official Dify references:
+- A SQLTunnel MCP URL reachable from Dify, such as `https://sqltunnel.example.com/mcp`.
+- A dedicated SQLTunnel API key for Dify.
+- Grants for the db servers Dify may access.
 
-- [Dify Tools](https://docs.dify.ai/en/use-dify/workspace/tools): Custom Tools can import external APIs from an OpenAPI schema.
-- [Tool Node](https://docs.dify.ai/en/use-dify/nodes/tools): Workflows and Chatflows can call tools with Tool nodes.
-- [HTTP Request Node](https://docs.dify.ai/en/use-dify/nodes/http-request): HTTP Request nodes support URL, headers, request body, authentication, and variable interpolation.
+Use a read-only client by default:
 
-## Recommended Setup
+```yaml
+clients:
+  - id: dify
+    apiKey: replace-with-a-random-secret
+    dbServers:
+      - serverId: prod-postgres
+        permission: read
+        maxRows: 500
+        queryTimeoutMs: 5000
+```
 
-All Dify flows should first import SQLTunnel's OpenAPI document as a Custom Tool. Then choose the app pattern:
+## Choose the MCP URL
 
-For model-driven database access during conversation, prefer:
+The URL must end in `/mcp` and be reachable from Dify's runtime:
+
+- Dify and SQLTunnel on the same Docker network: `http://sqltunnel:3000/mcp`
+- Dify in Docker and SQLTunnel on the host: `http://host.docker.internal:3000/mcp`
+- Dify Cloud or a remote deployment: `https://sqltunnel.example.com/mcp`
+
+Do not use `localhost` or `127.0.0.1` from Dify Cloud or a Dify container; those addresses refer to Dify itself. Use HTTPS for remote deployments.
+
+## Add the MCP server
+
+In the Dify workspace tool management UI, add an MCP server and choose HTTP. Menu labels can vary slightly by Dify version.
+
+Enter:
+
+- Server endpoint URL: `https://sqltunnel.example.com/mcp`
+- Name: `SQLTunnel`
+- Server identifier: `sqltunnel`
+
+On the Authentication tab:
+
+- Disable dynamic client registration.
+- Leave Client ID and Client Secret empty.
+
+SQLTunnel uses a static Bearer token, not the MCP OAuth authorization flow or dynamic client registration.
+
+On the Headers tab, add:
 
 ```text
-Agent app + SQLTunnel Custom Tool
+Authorization: Bearer replace-with-a-random-secret
 ```
 
-For fixed flows such as "generate SQL -> review SQL -> query -> summarize", prefer:
+Keep the Configuration tab at its defaults unless your environment requires custom timeouts. After saving and connecting, Dify should discover:
+
+- `list_db_servers`
+- `list_database_tables`
+- `get_table_schema`
+- `query_database`
+
+## Use with an Agent
+
+Create or open an Agent app and enable all four SQLTunnel MCP tools. The intended workflow is:
+
+1. Call `list_db_servers` when the target database is unknown.
+2. Call `list_database_tables` for a compact table list.
+3. Call `get_table_schema` only for relevant tables.
+4. Generate SQL and call `query_database`.
+
+Suggested Instructions / System Prompt:
 
 ```text
-Workflow / Tool node + SQLTunnel Custom Tool
+You are a cautious database query assistant with access to SQLTunnel MCP.
+
+Rules:
+- Call SQLTunnel only when the user needs database data.
+- If dbServerId is unknown, call list_db_servers first.
+- Before generating SQL, call list_database_tables and then get_table_schema only for relevant tables.
+- Copy schemaName and tableName exactly from tool results; never guess them.
+- Default to SELECT, WITH, SHOW, DESCRIBE, or EXPLAIN statements.
+- Select explicit columns and use necessary WHERE conditions; avoid SELECT *.
+- Keep maxRows to the minimum needed to answer the question.
+- Never reveal API keys, request headers, database passwords, or SSH configuration.
+- On a tool error, explain the error code instead of retrying the same invalid arguments repeatedly.
 ```
 
-Use an HTTP Request node only as a fallback when Custom Tools are not convenient in the current Dify environment.
+For an app tied to one database, specify the default `dbServerId` in the instructions, but retain table and schema discovery.
 
-## Prerequisite: Import SQLTunnel as a Custom Tool
+## Use in Workflow / Chatflow
 
-Dify Custom Tools can import external APIs from an OpenAPI schema and generate callable tool actions.
+Use an Agent node with the SQLTunnel MCP tools when the model should choose tables and generate SQL autonomously.
 
-### 1. Prepare OpenAPI
-
-Open SQLTunnel's OpenAPI endpoint:
-
-```text
-http://sqltunnel:3000/openapi.json
-```
-
-This endpoint automatically adds `servers` to the OpenAPI response based on the host Dify uses to reach SQLTunnel.
-
-If Dify cannot access the endpoint directly, copy the static file from the repository:
-
-```text
-docs/openapi.json
-```
-
-The static file does not include `servers`. If you import the static file, add `servers` before importing it into Dify:
-
-```json
-{
-  "servers": [
-    {
-      "url": "http://sqltunnel:3000"
-    }
-  ]
-}
-```
-
-Only add `servers`; do not remove the existing `paths`.
-
-### 2. Create the Custom Tool
-
-In Dify, go to Tools, create a Custom Tool, and import SQLTunnel's OpenAPI schema.
-
-The imported tool should expose two actions:
-
-- `POST /schema`
-- `POST /query`
-
-### 3. Configure Authentication
-
-SQLTunnel uses a custom API key header, not Bearer Token or the `Authorization` header.
-
-Configure a custom header:
-
-```text
-Header name: X-SQLTunnel-API-Key
-Header value: dify-read-key
-```
-
-## Option 1: Agent App
-
-Agent apps are suitable when the model should decide whether a database query is needed.
-
-### 1. Create an Agent App
-
-In Dify Studio, create an Agent app. Depending on the Dify UI version, the Agent option may appear under a beginner-friendly app category.
-
-### 2. Add the SQLTunnel Tool
-
-Add the imported SQLTunnel Custom Tool to the Agent's Tools.
-
-You can fix `dbServerId` to one business database, or let the Agent call `/schema` with `operation: list_databases` first and choose an available database.
-
-### 3. Agent Prompt
-
-Paste the following into the Agent Instructions / System Prompt. Replace `prod-postgres` with your default `dbServerId`. If the Agent should choose the db server dynamically, keep the instruction to call `/schema` with `operation: list_databases` when needed.
-
-```text
-You are a cautious database query assistant. You can use the SQLTunnel tool to query databases and explain the results to the user.
-
-SQLTunnel tool rules:
-- Call SQLTunnel only when the user's question requires database data.
-- Available dbServerId list:
-  - XX: database for XX business domain
-- If you are not sure which db server is available, call /schema with operation list_databases first.
-- When calling /query, always set responseFormat to json.
-- When calling /query, keep maxRows at 100 or lower by default. Use a larger value only when the user explicitly asks for more data and the answer truly needs it.
-- If there are no SQL parameters, pass [] or omit params.
-
-SQL generation rules:
-- Generate read-only SQL by default.
-- Only allow SELECT, WITH, SHOW, DESCRIBE, DESC, and EXPLAIN.
-- Do not generate INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE, GRANT, REVOKE, MERGE, CALL, or other write/admin statements.
-- Do not concatenate multiple SQL statements with semicolons.
-- Do not query unrelated tables or broaden the query scope to guess the answer.
-- Filter first when possible. Aggregate first when possible. Avoid pulling large detail datasets.
-- If the user question lacks required conditions, ask a follow-up question instead of querying blindly.
-
-Result handling rules:
-- Base the answer on query results. Do not invent information that was not returned.
-- If the result is empty, clearly say no matching data was found.
-- If there are many rows, summarize the key conclusion first, then include only necessary sample rows.
-- Do not fully reveal passwords, tokens, keys, ID numbers, phone numbers, emails, or other sensitive fields. Mask them if they must be mentioned.
-- Do not reveal the SQLTunnel API key, request headers, internal connection configuration, or database passwords.
-
-Error handling rules:
-- If the tool returns UNAUTHENTICATED, FORBIDDEN, DB_SERVER_NOT_FOUND, or INVALID_REQUEST, briefly explain the failure and ask the user to check configuration or permissions.
-- If the tool returns QUERY_FAILED, the SQL execution failed. Modify the SQL based on the error and retry once. If it still fails, explain the failure to the user.
-- Do not rewrite SQL into a dangerous form to bypass permission or read-only restrictions.
-
-Response style:
-- Answer in the user's language.
-- Give the conclusion first, then the supporting query evidence.
-- When an answer depends on a query, briefly mention the dbServerId and the main query condition.
-```
-
-### 4. Knowledge Base
-
-For complex business domains, put table schemas, field descriptions, and business terminology into a Dify knowledge base and attach it to the Agent.
-
-## Option 2: Workflow / Tool Node
-
-Workflow and Chatflow are suitable for fixed flows such as "generate SQL -> review SQL -> query -> summarize". This option still uses the SQLTunnel Custom Tool; the workflow explicitly controls when the tool is called.
-
-### 1. Add a Tool Node
-
-In a Workflow or Chatflow canvas:
-
-1. Click `Add Node`.
-2. Choose `Tools`.
-3. Select the imported SQLTunnel tool action, for example `/query`.
-4. Fill in parameters or map them from upstream node variables.
-
-Dify's Tool node can call tools as standalone nodes in Workflows and Chatflows.
-
-### 2. Configure `/query` Parameters
-
-Recommended fixed parameters:
+For fixed SQL, call `query_database` directly from a tool node with fixed or variable inputs:
 
 ```json
 {
   "dbServerId": "prod-postgres",
-  "sql": "{{sql}}",
-  "params": [],
-  "maxRows": 100,
-  "responseFormat": "json"
+  "sql": "select id, status from orders where id = $1",
+  "params": [123],
+  "maxRows": 10
 }
 ```
 
-The `sql` value usually comes from an upstream LLM, Code, or Parameter Extractor node.
+PostgreSQL placeholders use `$1`, `$2`; MySQL uses `?`.
 
-### 3. Handle Tool Node Output
+## Verify the connection
 
-With `responseFormat: "json"`, the response is:
-
-```json
-{
-  "columns": ["id", "name"],
-  "rows": [
-    {
-      "id": 1,
-      "name": "Alice"
-    }
-  ],
-  "rowCount": 1,
-  "durationMs": 24,
-  "dbServerId": "prod-postgres"
-}
-```
-
-Downstream nodes typically read:
-
-- `rows`
-- `columns`
-- `rowCount`
-- `durationMs`
-
-### 4. Recommended Workflow
+First ask:
 
 ```text
-User Input
-  -> LLM generates read-only SQL
-  -> Code or LLM node reviews SQL
-  -> Tool node calls /query
-  -> LLM summarizes query results
-  -> Answer
+List the databases and tables you can access. Do not query table data yet.
 ```
 
-The SQL review node should check:
-
-- Only allow `select` / `with` / `show` / `describe` / `explain`.
-- Reject `insert` / `update` / `delete` / `drop` / `alter` / `truncate`.
-- Reject semicolon-joined multi-statement SQL.
-- Enforce a reasonable `maxRows`.
-
-SQLTunnel performs server-side permission and read-only checks as well. Dify-side review reduces invalid requests and accidental tool misuse.
-
-## Fallback: Workflow / HTTP Request Node
-
-Dify's HTTP Request node can call external APIs directly and supports variable interpolation. Use this only when importing or using the SQLTunnel Custom Tool is not practical.
-
-### 1. Add an HTTP Request Node
-
-In a Workflow or Chatflow, add an HTTP Request node.
-
-Configuration:
-
-- Method: `POST`
-- URL: `http://sqltunnel:3000/query`
-- Auth: `API Key`, with a custom header. If your Dify version does not provide that option, choose `No Auth` and configure the header manually.
-- Headers:
-  - `content-type: application/json`
-  - `X-SQLTunnel-API-Key: {{SQLTUNNEL_API_KEY}}`
-- Body type: `JSON`
-
-Body example:
-
-```json
-{
-  "dbServerId": "prod-postgres",
-  "sql": "{{sql}}",
-  "params": [],
-  "maxRows": 100,
-  "responseFormat": "json"
-}
-```
-
-Dify HTTP Request nodes support `{{variable_name}}` references. Put SQL generated by an upstream LLM, Code, or Parameter Extractor node into the `sql` field.
-
-### 2. Handle HTTP Response
-
-With `responseFormat: "json"`, the HTTP response body is:
-
-```json
-{
-  "columns": ["id", "name"],
-  "rows": [
-    {
-      "id": 1,
-      "name": "Alice"
-    }
-  ],
-  "rowCount": 1,
-  "durationMs": 24,
-  "dbServerId": "prod-postgres"
-}
-```
-
-Downstream nodes typically read:
-
-- `rows`
-- `columns`
-- `rowCount`
-- `durationMs`
-
-With default `responseFormat: "raw"`, the HTTP response body is text:
-
-- Single-column result: one value per line.
-- Multi-column result: TSV with column names on the first line.
-
-## Workflow Prompt
-
-For Workflow / Tool node setups, put the following in the SQL generation or SQL review node prompt. Agent apps should use the fuller Agent prompt above.
+Then test the full workflow:
 
 ```text
-You can query databases through SQLTunnel.
-Generate read-only SQL only. Prefer SELECT.
-Do not generate INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, or other write operations.
-Do not concatenate multiple SQL statements with semicolons.
-Keep maxRows at 100 or lower unless the user explicitly asks for more data.
-If query results contain passwords, tokens, ID numbers, phone numbers, or other sensitive fields, do not reveal full values.
+Inspect public.users in prod-postgres, then count the users.
 ```
 
-## Common Questions
+Use Dify run logs to verify tool order and arguments.
 
-### What URL should Dify use?
+## Troubleshooting
 
-It depends on where Dify and SQLTunnel run:
+### Dify cannot connect
 
-- Same Docker Compose network: `http://sqltunnel:3000`
-- Same machine for local debugging: `http://127.0.0.1:3000`
-- Dify Cloud: do not use your local `localhost`; expose SQLTunnel at an address reachable from Dify Cloud.
+- Ensure the URL ends in `/mcp`.
+- Test from the Dify container or server, not only from your browser.
+- Check Docker networking, DNS, firewall rules, reverse proxy routing, and TLS certificates.
 
-### Which Dify authentication option should I choose?
+### UNAUTHENTICATED
 
-Prefer `API Key`, with location set to a custom header and header name set to `X-SQLTunnel-API-Key`. If your Dify version does not provide that option, choose `No Auth` and add `X-SQLTunnel-API-Key` manually in Headers.
+- The header must be `Authorization: Bearer <SQLTUNNEL_API_KEY>`.
+- Do not put the API key in the OAuth Client Secret field.
+- Confirm `gateway.yaml` contains the same key and restart SQLTunnel after changes.
+
+### FORBIDDEN or DB_SERVER_NOT_FOUND
+
+Check the Dify client's `dbServers` grants and the `dbServerId` passed by the tool call.
+
+### Stale schema metadata
+
+Call `list_database_tables` or `get_table_schema` with `refresh: true`. The default TTL is controlled by `defaults.schemaCacheTtlMs`.
+
+## Security recommendations
+
+- Give Dify a dedicated API key and a read-only database account.
+- Keep `maxRows` and `queryTimeoutMs` low.
+- Never put production API keys in app prompts.
+- Use HTTPS and restrict network access to SQLTunnel.
+- Grant `write` only when explicitly required.
+
+Reference: [Dify documentation](https://docs.dify.ai/).

@@ -126,9 +126,18 @@ config/
 - 将整个 `config` 目录挂载到容器内的 `/app/config`；默认配置路径会对应为 `/app/config/gateway.yaml`。
 - API key、数据库密码、SSH 私钥等敏感信息放在 `config/gateway.yaml` 或 `config/ssh/` 文件中；外部调用方只需要拿到自己的 API key。
 
+## OpenAPI 接口
+
+SQLTunnel 的 OpenAPI 文档位于 `GET /openapi.json`，对外只暴露两个业务接口：
+
+- `POST /schema`：通过 `operation` 列出数据库、列出表，或读取一张表的结构。
+- `POST /query`：执行一条经过授权和限制的 SQL。
+
+请求通过 `Authorization: Bearer <SQLTUNNEL_API_KEY>` 鉴权。OpenAPI 适合直接 HTTP 调用、自动化工作流，以及不支持 MCP 的应用；完整请求和响应格式见 [API 参考](docs/api.zh-CN.md)。
+
 ## MCP 接口
 
-SQLTunnel 在 `POST /mcp` 提供无状态 Streamable HTTP MCP 接口，可供 Hermes、Claude Code、Cursor 等 MCP client 使用。它沿用 `gateway.yaml` 中的 client API key、db server 权限、查询行数和超时限制。
+SQLTunnel 在 `POST /mcp` 提供无状态 Streamable HTTP MCP 接口。它沿用 `gateway.yaml` 中的 client API key、db server 权限、查询行数和超时限制。
 
 MCP 提供四个语义明确的工具：
 
@@ -137,25 +146,16 @@ MCP 提供四个语义明确的工具：
 - `get_table_schema`：读取指定表或视图的字段、类型、默认值、注释和键。
 - `query_database`：执行一条 SQL；权限检查和查询限制与 `POST /query` 完全相同。
 
-Hermes 配置示例：
-
-```yaml
-mcp_servers:
-  sqltunnel:
-    url: "http://localhost:3000/mcp"
-    headers:
-      X-SQLTunnel-API-Key: "dev-read-key"
-    tools:
-      include: [list_db_servers, list_database_tables, get_table_schema, query_database]
-      resources: false
-      prompts: false
-```
-
 建议为 Agent 单独创建只读 client，并使用数据库自身的只读账号。远程部署时应通过 HTTPS 暴露 `/mcp`，不要在客户端配置中提交真实 API key。
 
 Schema 缓存时间可通过 `defaults.schemaCacheTtlMs` 调整；设为 `0` 可关闭缓存。通过 SQLTunnel 成功执行写入或 DDL 后，对应 db server 的 Schema 缓存会自动失效。
 
-OpenAPI 只暴露 `POST /query` 和 `POST /schema` 两个业务接口。`/schema` 通过 `operation` 支持列出数据库、列出表和获取表结构，避免在 Dify 等平台中生成过多工具。
+详细接入指南：
+
+- [Dify](docs/dify.zh-CN.md)
+- [Claude Code](docs/claude-code.zh-CN.md)
+- [Codex](docs/codex.zh-CN.md)
+- [Hermes](docs/hermes.zh-CN.md)
 
 ## 备份功能
 
@@ -190,4 +190,7 @@ volumes:
 - [备份功能](#备份功能)
 - [配置参考](docs/configuration.zh-CN.md)
 - [API 参考](docs/api.zh-CN.md)
-- [Dify 配置指南](docs/dify.zh-CN.md)
+- [Dify MCP 配置指南](docs/dify.zh-CN.md)
+- [Claude Code MCP 配置指南](docs/claude-code.zh-CN.md)
+- [Codex MCP 配置指南](docs/codex.zh-CN.md)
+- [Hermes MCP 配置指南](docs/hermes.zh-CN.md)

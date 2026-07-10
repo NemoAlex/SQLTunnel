@@ -30,7 +30,7 @@ Success response: JSON based on `openapi.json`, with `servers` added from the cu
 
 ### POST /schema
 
-Provides database, table, and table-schema metadata through an explicit `operation`. The `X-SQLTunnel-API-Key` request header is required.
+Provides database, table, and table-schema metadata through an explicit `operation`. The `Authorization: Bearer <SQLTUNNEL_API_KEY>` request header is required.
 
 List databases available to the current client:
 
@@ -120,7 +120,7 @@ Request body:
 
 Request fields:
 
-- Header `X-SQLTunnel-API-Key`: Required. Client API key.
+- Header `Authorization: Bearer <SQLTUNNEL_API_KEY>`: Required. Client API key.
 - `dbServerId`: Required. Target db server id.
 - `sql`: Required. SQL to execute.
 - `params`: Optional. SQL parameter array. Default: `[]`.

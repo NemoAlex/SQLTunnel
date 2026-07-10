@@ -109,7 +109,13 @@ function loadOpenApiDocument(): OpenApiDocument {
 }
 
 function getApiKey(request: FastifyRequest): unknown {
-  return request.headers["x-sqltunnel-api-key"];
+  const authorization = request.headers.authorization;
+  if (typeof authorization !== "string") {
+    return undefined;
+  }
+
+  const match = /^Bearer\s+(.+)$/i.exec(authorization.trim());
+  return match?.[1]?.trim();
 }
 
 function withRequestServer(document: OpenApiDocument, request: FastifyRequest): OpenApiDocument {

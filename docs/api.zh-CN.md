@@ -30,7 +30,7 @@
 
 ### POST /schema
 
-通过 `operation` 提供数据库、表和表结构元数据。请求 header `X-SQLTunnel-API-Key` 必填。
+通过 `operation` 提供数据库、表和表结构元数据。请求 header `Authorization: Bearer <SQLTUNNEL_API_KEY>` 必填。
 
 列出当前 client 可以访问的数据库：
 
@@ -120,7 +120,7 @@ MySQL 的 `schemaName` 是配置的 database 名；PostgreSQL 使用实际 schem
 
 请求字段：
 
-- Header `X-SQLTunnel-API-Key`：必填。client 的 API key。
+- Header `Authorization: Bearer <SQLTUNNEL_API_KEY>`：必填。client 的 API key。
 - `dbServerId`：必填。目标 db server id。
 - `sql`：必填。要执行的 SQL。
 - `params`：可选。SQL 参数数组，默认 `[]`。

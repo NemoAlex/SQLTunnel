@@ -150,7 +150,7 @@ clients:
 Fields:
 
 - `id`: Required. Client id used to identify the caller.
-- `apiKey`: Required. API key sent by the caller in the `X-SQLTunnel-API-Key` header.
+- `apiKey`: Required. API key sent by the caller as an `Authorization: Bearer <SQLTUNNEL_API_KEY>` token.
 - `dbServers`: Required. List of db servers this client can access.
 - `dbServers[].serverId`: Required. References `dbServers[].id`.
 - `dbServers[].permission`: Optional. Permission: `read` or `write`. Defaults to `read`. `read` allows read-only SQL; `write` allows both read and write SQL.

@@ -126,9 +126,18 @@ Recommended setup:
 - Mount the whole `config` directory into the container as `/app/config`; the default config path becomes `/app/config/gateway.yaml`.
 - Keep API keys, database passwords, and SSH private keys in `config/gateway.yaml` or files under `config/ssh/`; external callers only need their own API key.
 
-## MCP Endpoint
+## OpenAPI
 
-SQLTunnel provides a stateless Streamable HTTP MCP endpoint at `POST /mcp` for MCP clients such as Hermes, Claude Code, and Cursor. It uses the same client API keys, db server grants, row limits, and timeouts configured in `gateway.yaml`.
+SQLTunnel serves its OpenAPI document at `GET /openapi.json` and exposes only two business endpoints:
+
+- `POST /schema`: list databases, list tables, or describe one table through an explicit `operation`.
+- `POST /query`: execute one authorized and bounded SQL statement.
+
+Requests authenticate with `Authorization: Bearer <SQLTUNNEL_API_KEY>`. OpenAPI is suitable for direct HTTP clients, automation workflows, and applications without MCP support. See the [API reference](docs/api.md) for complete request and response schemas.
+
+## MCP
+
+SQLTunnel provides a stateless Streamable HTTP MCP endpoint at `POST /mcp`. It uses the same client API keys, db server grants, row limits, and timeouts configured in `gateway.yaml`.
 
 MCP exposes four focused tools:
 
@@ -137,25 +146,16 @@ MCP exposes four focused tools:
 - `get_table_schema`: reads columns, types, defaults, comments, and keys for one table or view.
 - `query_database`: executes one SQL statement with the same authorization and query limits as `POST /query`.
 
-Hermes configuration example:
-
-```yaml
-mcp_servers:
-  sqltunnel:
-    url: "http://localhost:3000/mcp"
-    headers:
-      X-SQLTunnel-API-Key: "dev-read-key"
-    tools:
-      include: [list_db_servers, list_database_tables, get_table_schema, query_database]
-      resources: false
-      prompts: false
-```
-
 Create a dedicated read-only client for agents and use a read-only database account as defense in depth. Expose `/mcp` through HTTPS for remote deployments, and do not commit real API keys in client configuration files.
 
 Configure the schema cache with `defaults.schemaCacheTtlMs`; set it to `0` to disable caching. A successful write or DDL statement executed through SQLTunnel automatically invalidates the corresponding db server's schema cache.
 
-OpenAPI exposes only two business endpoints: `POST /query` and `POST /schema`. The `operation` field on `/schema` covers listing databases, listing tables, and describing one table, which keeps the imported tool surface small in platforms such as Dify.
+Detailed setup guides:
+
+- [Dify](docs/dify.md)
+- [Claude Code](docs/claude-code.md)
+- [Codex](docs/codex.md)
+- [Hermes](docs/hermes.md)
 
 ## Backup
 
@@ -190,4 +190,7 @@ volumes:
 - [Backup](#backup)
 - [Configuration reference](docs/configuration.md)
 - [API reference](docs/api.md)
-- [Dify setup guide](docs/dify.md)
+- [Dify MCP setup guide](docs/dify.md)
+- [Claude Code MCP setup guide](docs/claude-code.md)
+- [Codex MCP setup guide](docs/codex.md)
+- [Hermes MCP setup guide](docs/hermes.md)

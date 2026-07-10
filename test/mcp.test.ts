@@ -42,7 +42,7 @@ const config: GatewayConfig = {
   ]
 };
 
-test("MCP endpoint requires a SQLTunnel API key", async () => {
+test("MCP endpoint requires a SQLTunnel Bearer token", async () => {
   const app = buildServer(config);
 
   const response = await app.inject({
@@ -69,6 +69,36 @@ test("MCP endpoint requires a SQLTunnel API key", async () => {
   await app.close();
 });
 
+test("legacy SQLTunnel API key header is rejected", async () => {
+  const app = buildServer(config);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/schema",
+    headers: { "X-SQLTunnel-API-Key": "test-key" },
+    payload: { operation: "list_databases" }
+  });
+
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.json().code, "UNAUTHENTICATED");
+  await app.close();
+});
+
+test("non-Bearer authorization scheme is rejected", async () => {
+  const app = buildServer(config);
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/schema",
+    headers: { Authorization: "Basic test-key" },
+    payload: { operation: "list_databases" }
+  });
+
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.json().code, "UNAUTHENTICATED");
+  await app.close();
+});
+
 test("MCP client can discover and call SQLTunnel tools", async () => {
   const app = buildServer(config);
   await app.listen({ host: "127.0.0.1", port: 0 });
@@ -79,7 +109,7 @@ test("MCP client can discover and call SQLTunnel tools", async () => {
   const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`), {
     requestInit: {
       headers: {
-        "X-SQLTunnel-API-Key": "test-key"
+        Authorization: "Bearer test-key"
       }
     }
   });
@@ -138,7 +168,7 @@ test("OpenAPI exposes only query and schema business tools", async () => {
   const schemaResponse = await app.inject({
     method: "POST",
     url: "/schema",
-    headers: { "X-SQLTunnel-API-Key": "test-key" },
+    headers: { Authorization: "Bearer test-key" },
     payload: { operation: "list_databases" }
   });
   assert.equal(schemaResponse.statusCode, 200);
@@ -157,12 +187,22 @@ test("OpenAPI exposes only query and schema business tools", async () => {
   const removedResponse = await app.inject({
     method: "POST",
     url: "/db-servers",
-    headers: { "X-SQLTunnel-API-Key": "test-key" },
+    headers: { Authorization: "Bearer test-key" },
     payload: {}
   });
   assert.equal(removedResponse.statusCode, 404);
 
   const openApiResponse = await app.inject({ method: "GET", url: "/openapi.json" });
-  assert.deepEqual(Object.keys(openApiResponse.json().paths).sort(), ["/query", "/schema"]);
+  const openApiDocument = openApiResponse.json();
+  assert.deepEqual(Object.keys(openApiDocument.paths).sort(), ["/query", "/schema"]);
+  assert.deepEqual(openApiDocument.components.securitySchemes, {
+    SQLTunnelBearerAuth: {
+      type: "http",
+      scheme: "bearer",
+      bearerFormat: "API key"
+    }
+  });
+  assert.deepEqual(openApiDocument.paths["/query"].post.security, [{ SQLTunnelBearerAuth: [] }]);
+  assert.deepEqual(openApiDocument.paths["/schema"].post.security, [{ SQLTunnelBearerAuth: [] }]);
   await app.close();
 });

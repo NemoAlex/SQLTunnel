@@ -6,10 +6,10 @@
   },
   "components": {
     "securitySchemes": {
-      "SQLTunnelApiKey": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-SQLTunnel-API-Key"
+      "SQLTunnelBearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API key"
       }
     },
     "schemas": {
@@ -333,7 +333,7 @@
         "summary": "List databases, list tables, or describe one table",
         "security": [
           {
-            "SQLTunnelApiKey": []
+            "SQLTunnelBearerAuth": []
           }
         ],
         "requestBody": {
@@ -397,7 +397,7 @@
         "summary": "Execute one authorized SQL statement",
         "security": [
           {
-            "SQLTunnelApiKey": []
+            "SQLTunnelBearerAuth": []
           }
         ],
         "requestBody": {
