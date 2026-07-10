@@ -4,6 +4,8 @@ import YAML from "yaml";
 import { loadConfig } from "../src/config.js";
 import type { GatewayConfig } from "../src/types.js";
 import type { DesktopPreferences } from "../shared/desktop.js";
+import { isUiLanguagePreference, resolveUiLocale } from "../shared/ui-locale.js";
+import { text } from "./i18n.js";
 
 export const DEFAULT_GATEWAY_CONFIG: GatewayConfig = {
   defaults: {
@@ -18,9 +20,10 @@ export const DEFAULT_GATEWAY_CONFIG: GatewayConfig = {
 };
 
 export const DEFAULT_DESKTOP_PREFERENCES: DesktopPreferences = {
+  host: "127.0.0.1",
   port: 3000,
   startOnLaunch: false,
-  launchAtLogin: false
+  language: "system"
 };
 
 export class DesktopConfigStore {
@@ -109,14 +112,21 @@ export class DesktopConfigStore {
 }
 
 function normalizePreferences(preferences: Partial<DesktopPreferences>): DesktopPreferences {
+  const language = isUiLanguagePreference(preferences.language) ? preferences.language : "system";
+  const locale = resolveUiLocale(language, [Intl.DateTimeFormat().resolvedOptions().locale]);
+  const host = String(preferences.host ?? DEFAULT_DESKTOP_PREFERENCES.host).trim();
+  if (!host || /\s/.test(host)) {
+    throw new Error(text(locale, "The listen address cannot be empty or contain spaces"));
+  }
   const port = Number(preferences.port ?? DEFAULT_DESKTOP_PREFERENCES.port);
   if (!Number.isInteger(port) || port <= 0 || port > 65_535) {
-    throw new Error("端口必须是 1 到 65535 之间的整数");
+    throw new Error(text(locale, "The port must be an integer between 1 and 65535"));
   }
 
   return {
+    host,
     port,
     startOnLaunch: preferences.startOnLaunch === true,
-    launchAtLogin: preferences.launchAtLogin === true
+    language
   };
 }

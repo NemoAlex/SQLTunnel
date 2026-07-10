@@ -71,6 +71,14 @@ export class SshTunnelPool {
     }
   }
 
+  async testConnection(sshServerId: string, connectTimeoutMs: number): Promise<void> {
+    const sshServer = this.sshServersById.get(sshServerId);
+    if (!sshServer) {
+      throw new GatewayError("INVALID_CONFIG", `Unknown sshServer: ${sshServerId}`, 500);
+    }
+    await this.getEntry(sshServer, connectTimeoutMs);
+  }
+
   async closeAll(): Promise<void> {
     for (const sshServerId of this.entries.keys()) {
       this.closeEntry(sshServerId);

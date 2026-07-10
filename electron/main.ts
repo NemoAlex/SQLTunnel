@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Menu,
   shell
@@ -11,7 +12,10 @@ import { DesktopConfigStore } from "./config-store.js";
 import { ServiceRuntime } from "./service-runtime.js";
 import { DESKTOP_CHANNELS } from "../shared/desktop.js";
 import type { DesktopPreferences, DesktopSnapshot } from "../shared/desktop.js";
+import { resolveUiLocale } from "../shared/ui-locale.js";
+import type { UiLocale } from "../shared/ui-locale.js";
 import type { GatewayConfig } from "../src/types.js";
+import { text } from "./i18n.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -22,7 +26,7 @@ let store: DesktopConfigStore;
 let runtime: ServiceRuntime;
 let config: GatewayConfig;
 let preferences: DesktopPreferences;
-let quitAfterShutdown = false;
+let shutdownStarted = false;
 
 if (!hasSingleInstanceLock) {
   app.quit();
@@ -43,6 +47,7 @@ if (!hasSingleInstanceLock) {
 
 async function initializeDesktopApp(): Promise<void> {
   app.setName("SQLTunnel");
+  applyDevelopmentAppIcon();
   store = new DesktopConfigStore(app.getPath("userData"));
   store.initialize();
   config = store.loadGatewayConfig();
@@ -51,10 +56,10 @@ async function initializeDesktopApp(): Promise<void> {
     store.configPath,
     preferences,
     path.join(app.getAppPath(), "docs", "openapi.json"),
-    broadcastSnapshot
+    broadcastSnapshot,
+    getUiLocale()
   );
 
-  applyLoginItemPreference();
   registerIpcHandlers();
   installApplicationMenu();
   createMainWindow();
@@ -62,6 +67,13 @@ async function initializeDesktopApp(): Promise<void> {
   if (preferences.startOnLaunch) {
     await runtime.start().catch(() => undefined);
   }
+}
+
+function applyDevelopmentAppIcon(): void {
+  if (process.platform !== "darwin" || app.isPackaged || !app.dock) {
+    return;
+  }
+  app.dock.setIcon(path.join(app.getAppPath(), "assets", "icon-1024-macos.png"));
 }
 
 function createMainWindow(): void {
@@ -77,6 +89,7 @@ function createMainWindow(): void {
     minHeight: 400,
     maxWidth: 520,
     title: "SQLTunnel",
+    titleBarStyle: "hiddenInset",
     backgroundColor: "#f4f5f7",
     fullscreenable: false,
     maximizable: false,
@@ -105,11 +118,12 @@ function createSettingsWindow(): void {
   }
 
   settingsWindow = new BrowserWindow({
-    width: 920,
-    height: 700,
-    minWidth: 760,
-    minHeight: 560,
-    title: "SQLTunnel 设置",
+    width: 840,
+    height: 620,
+    minWidth: 720,
+    minHeight: 520,
+    title: text(getUiLocale(), "SQLTunnel Settings"),
+    titleBarStyle: "hiddenInset",
     backgroundColor: "#f5f6f8",
     fullscreenable: false,
     show: false,
@@ -124,7 +138,7 @@ function createSettingsWindow(): void {
   settingsWindow.once("ready-to-show", () => settingsWindow?.show());
   settingsWindow.on("page-title-updated", (event) => {
     event.preventDefault();
-    settingsWindow?.setTitle("SQLTunnel 设置");
+    settingsWindow?.setTitle(text(getUiLocale(), "SQLTunnel Settings"));
   });
   settingsWindow.on("closed", () => {
     settingsWindow = undefined;
@@ -148,16 +162,21 @@ function loadRenderer(browserWindow: BrowserWindow, windowKind: "main" | "settin
 
 function registerIpcHandlers(): void {
   ipcMain.handle(DESKTOP_CHANNELS.getSnapshot, () => getSnapshot());
-  ipcMain.handle(DESKTOP_CHANNELS.saveConfig, (_event, nextConfig: GatewayConfig) => {
+  ipcMain.handle(DESKTOP_CHANNELS.saveConfig, async (_event, nextConfig: GatewayConfig) => {
+    assertConfigurationEditable();
     config = store.saveGatewayConfig(nextConfig);
-    runtime.record("success", "配置已保存；正在运行的服务将在下次启动时使用新配置");
+    await runtime.configurationChanged();
+    runtime.record("success", text(getUiLocale(), "Configuration saved"));
     return getSnapshot();
   });
   ipcMain.handle(DESKTOP_CHANNELS.savePreferences, (_event, nextPreferences: DesktopPreferences) => {
+    assertConfigurationEditable();
     preferences = store.savePreferences(nextPreferences);
     runtime.setPreferences(preferences);
-    applyLoginItemPreference();
-    runtime.record("success", "桌面偏好已保存");
+    runtime.setLocale(getUiLocale());
+    runtime.record("success", text(getUiLocale(), "Desktop preferences saved"));
+    installApplicationMenu();
+    updateWindowTitles();
     return getSnapshot();
   });
   ipcMain.handle(DESKTOP_CHANNELS.startService, async () => {
@@ -172,8 +191,22 @@ function registerIpcHandlers(): void {
     await runtime.restart();
     return getSnapshot();
   });
-  ipcMain.handle(DESKTOP_CHANNELS.openSettings, () => {
-    createSettingsWindow();
+  ipcMain.handle(DESKTOP_CHANNELS.testDatabaseConnection, async (_event, dbServerId: string) => {
+    if (typeof dbServerId !== "string" || !dbServerId.trim()) {
+      throw new Error("Invalid database ID");
+    }
+    await runtime.testDatabaseConnection(dbServerId);
+  });
+  ipcMain.handle(DESKTOP_CHANNELS.testDraftDatabaseConnection, async (_event, draftConfig: GatewayConfig, dbServerId: string) => {
+    assertDraftTestArguments(draftConfig, dbServerId);
+    await runtime.testDraftDatabaseConnection(draftConfig, dbServerId);
+  });
+  ipcMain.handle(DESKTOP_CHANNELS.testDraftSshConnection, async (_event, draftConfig: GatewayConfig, sshServerId: string) => {
+    assertDraftTestArguments(draftConfig, sshServerId);
+    await runtime.testDraftSshConnection(draftConfig, sshServerId);
+  });
+  ipcMain.handle(DESKTOP_CHANNELS.openSettings, async () => {
+    await requestOpenSettings();
   });
   ipcMain.handle(DESKTOP_CHANNELS.openConfigFolder, async () => {
     const error = await shell.openPath(store.dataDirectory);
@@ -205,20 +238,47 @@ function broadcastSnapshot(): void {
   }
 }
 
-function applyLoginItemPreference(): void {
-  if (!app.isPackaged) {
+function assertConfigurationEditable(): void {
+  const phase = runtime.getStatus().phase;
+  if (phase === "running" || phase === "starting" || phase === "stopping") {
+    throw new Error(text(getUiLocale(), "Stop SQLTunnel before changing settings"));
+  }
+}
+
+function assertDraftTestArguments(configDraft: unknown, connectionId: unknown): asserts configDraft is GatewayConfig {
+  if (!configDraft || typeof configDraft !== "object" || typeof connectionId !== "string" || !connectionId.trim()) {
+    throw new Error("Invalid connection test configuration");
+  }
+}
+
+async function requestOpenSettings(): Promise<void> {
+  const phase = runtime.getStatus().phase;
+  if (phase !== "running" && phase !== "starting" && phase !== "stopping") {
+    createSettingsWindow();
     return;
   }
-  if (app.getLoginItemSettings().openAtLogin === preferences.launchAtLogin) {
+
+  const options: Electron.MessageBoxOptions = {
+    type: "warning",
+    message: text(getUiLocale(), "SQLTunnel must be stopped first"),
+    detail: text(getUiLocale(), "Configuration cannot be changed while the service is running."),
+    buttons: [text(getUiLocale(), "Cancel"), text(getUiLocale(), "Stop and Open Settings")],
+    defaultId: 1,
+    cancelId: 0,
+    noLink: true
+  };
+  const result = mainWindow && !mainWindow.isDestroyed()
+    ? await dialog.showMessageBox(mainWindow, options)
+    : await dialog.showMessageBox(options);
+  if (result.response !== 1) {
     return;
   }
-  app.setLoginItemSettings({
-    openAtLogin: preferences.launchAtLogin,
-    openAsHidden: false
-  });
+  await runtime.stop();
+  createSettingsWindow();
 }
 
 function installApplicationMenu(): void {
+  const locale = getUiLocale();
   const template: Electron.MenuItemConstructorOptions[] = [
     {
       label: app.name,
@@ -226,9 +286,9 @@ function installApplicationMenu(): void {
         { role: "about" },
         { type: "separator" },
         {
-          label: "设置…",
+          label: text(locale, "Settings…"),
           accelerator: "CommandOrControl+,",
-          click: () => createSettingsWindow()
+          click: () => void requestOpenSettings()
         },
         { type: "separator" },
         { role: "hide" },
@@ -239,7 +299,7 @@ function installApplicationMenu(): void {
       ]
     },
     {
-      label: "编辑",
+      label: text(locale, "Edit"),
       submenu: [
         { role: "undo" },
         { role: "redo" },
@@ -251,7 +311,7 @@ function installApplicationMenu(): void {
       ]
     },
     {
-      label: "窗口",
+      label: text(locale, "Window"),
       submenu: [
         { role: "minimize" },
         { role: "zoom" },
@@ -263,6 +323,14 @@ function installApplicationMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function getUiLocale(): UiLocale {
+  return resolveUiLocale(preferences.language, app.getPreferredSystemLanguages());
+}
+
+function updateWindowTitles(): void {
+  settingsWindow?.setTitle(text(getUiLocale(), "SQLTunnel Settings"));
+}
+
 app.on("activate", () => createMainWindow());
 
 app.on("window-all-closed", () => {
@@ -272,10 +340,15 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
-  if (!runtime || quitAfterShutdown) {
+  if (!runtime) {
     return;
   }
   event.preventDefault();
-  quitAfterShutdown = true;
-  void runtime.stop().finally(() => app.quit());
+  if (shutdownStarted) {
+    return;
+  }
+  shutdownStarted = true;
+  void runtime.stop()
+    .catch((error) => console.error("Failed to stop SQLTunnel while quitting", error))
+    .finally(() => app.exit(0));
 });

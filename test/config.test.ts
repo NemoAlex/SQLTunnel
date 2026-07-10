@@ -47,3 +47,20 @@ test("rejects an empty db server description", (t) => {
       error.message === "dbServers[app-postgres].description must be a non-empty string"
   );
 });
+
+test("uses SSH defaults when the port and username are omitted", (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sqltunnel-ssh-port-"));
+  const configPath = path.join(directory, "gateway.yaml");
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(configPath, `sshServers:
+  - id: bastion
+    host: ssh-port-default.invalid
+dbServers: []
+clients: []
+`);
+
+  const config = loadConfig(configPath);
+
+  assert.equal(config.sshServers[0]?.port, 22);
+  assert.equal(config.sshServers[0]?.username, os.userInfo().username);
+});

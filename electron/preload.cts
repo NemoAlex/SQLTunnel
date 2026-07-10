@@ -13,6 +13,9 @@ const channels = {
   startService: "desktop:start-service",
   stopService: "desktop:stop-service",
   restartService: "desktop:restart-service",
+  testDatabaseConnection: "desktop:test-database-connection",
+  testDraftDatabaseConnection: "desktop:test-draft-database-connection",
+  testDraftSshConnection: "desktop:test-draft-ssh-connection",
   openSettings: "desktop:open-settings",
   openConfigFolder: "desktop:open-config-folder",
   snapshotChanged: "desktop:snapshot-changed"
@@ -27,6 +30,12 @@ const api: SQLTunnelDesktopApi = {
   startService: () => ipcRenderer.invoke(channels.startService) as Promise<DesktopSnapshot>,
   stopService: () => ipcRenderer.invoke(channels.stopService) as Promise<DesktopSnapshot>,
   restartService: () => ipcRenderer.invoke(channels.restartService) as Promise<DesktopSnapshot>,
+  testDatabaseConnection: (dbServerId: string) =>
+    ipcRenderer.invoke(channels.testDatabaseConnection, dbServerId) as Promise<void>,
+  testDraftDatabaseConnection: (config: GatewayConfig, dbServerId: string) =>
+    ipcRenderer.invoke(channels.testDraftDatabaseConnection, config, dbServerId) as Promise<void>,
+  testDraftSshConnection: (config: GatewayConfig, sshServerId: string) =>
+    ipcRenderer.invoke(channels.testDraftSshConnection, config, sshServerId) as Promise<void>,
   openSettings: () => ipcRenderer.invoke(channels.openSettings) as Promise<void>,
   openConfigFolder: () => ipcRenderer.invoke(channels.openConfigFolder) as Promise<void>,
   onSnapshot: (listener: (snapshot: DesktopSnapshot) => void) => {

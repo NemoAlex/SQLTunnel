@@ -16,6 +16,7 @@ type OpenApiDocument = Record<string, unknown> & {
 
 export interface BuildServerOptions {
   openApiPath?: string;
+  gateway?: GatewayService;
   onDatabaseActivity?: (dbServerId: string, active: boolean, succeeded?: boolean) => void;
   onSshConnectionStatus?: (sshServerId: string, connected: boolean) => void;
   onHttpRequest?: (entry: HttpRequestLogEntry) => void;
@@ -33,7 +34,7 @@ export function buildServer(config: GatewayConfig, options: BuildServerOptions =
     logger: true,
     genReqId: () => randomUUID()
   });
-  const gateway = new GatewayService(config, {
+  const gateway = options.gateway ?? new GatewayService(config, {
     onDatabaseActivity: options.onDatabaseActivity,
     onSshConnectionStatus: options.onSshConnectionStatus
   });

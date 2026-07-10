@@ -1,4 +1,5 @@
 import type { GatewayConfig } from "../src/types.js";
+import type { UiLanguagePreference } from "./ui-locale.js";
 
 export type ServicePhase = "stopped" | "starting" | "running" | "stopping" | "error";
 
@@ -12,9 +13,10 @@ export interface ServiceStatus {
 }
 
 export interface DesktopPreferences {
+  host: string;
   port: number;
   startOnLaunch: boolean;
-  launchAtLogin: boolean;
+  language: UiLanguagePreference;
 }
 
 export interface DesktopLogEntry {
@@ -54,6 +56,9 @@ export interface SQLTunnelDesktopApi {
   startService(): Promise<DesktopSnapshot>;
   stopService(): Promise<DesktopSnapshot>;
   restartService(): Promise<DesktopSnapshot>;
+  testDatabaseConnection(dbServerId: string): Promise<void>;
+  testDraftDatabaseConnection(config: GatewayConfig, dbServerId: string): Promise<void>;
+  testDraftSshConnection(config: GatewayConfig, sshServerId: string): Promise<void>;
   openSettings(): Promise<void>;
   openConfigFolder(): Promise<void>;
   onSnapshot(listener: (snapshot: DesktopSnapshot) => void): () => void;
@@ -66,6 +71,9 @@ export const DESKTOP_CHANNELS = {
   startService: "desktop:start-service",
   stopService: "desktop:stop-service",
   restartService: "desktop:restart-service",
+  testDatabaseConnection: "desktop:test-database-connection",
+  testDraftDatabaseConnection: "desktop:test-draft-database-connection",
+  testDraftSshConnection: "desktop:test-draft-ssh-connection",
   openSettings: "desktop:open-settings",
   openConfigFolder: "desktop:open-config-folder",
   snapshotChanged: "desktop:snapshot-changed"

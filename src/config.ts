@@ -34,7 +34,10 @@ export function loadConfig(configPath = process.env.SQLTUNNEL_CONFIG ?? DEFAULT_
   }
 
   const parsed = YAML.parse(fs.readFileSync(absolutePath, "utf8")) as Partial<GatewayConfig>;
-  const configDir = path.dirname(absolutePath);
+  return normalizeGatewayConfig(parsed, path.dirname(absolutePath));
+}
+
+export function normalizeGatewayConfig(parsed: Partial<GatewayConfig>, configDir: string): GatewayConfig {
   const config: GatewayConfig = {
     defaults: {
       maxRows: parsed.defaults?.maxRows ?? 1000,

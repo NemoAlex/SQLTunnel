@@ -20,6 +20,7 @@ import type {
 const plainLogger = {
   info: (message: string) => console.info(message)
 };
+const CONNECTION_TEST_TIMEOUT_MS = 10_000;
 
 export interface GatewayServiceDependencies {
   executeQuery?: typeof executeQuery;
@@ -73,6 +74,28 @@ export class GatewayService {
         ssh: Boolean(dbServer.sshServerId)
       };
     });
+  }
+
+  async testConnection(dbServerId: string): Promise<void> {
+    const dbServer = this.dbServersById.get(dbServerId);
+    if (!dbServer) {
+      throw new GatewayError("DB_SERVER_NOT_FOUND", `Db server not found: ${dbServerId}`, 404);
+    }
+
+    await this.executeTrackedQuery({
+      dbServer,
+      sshTunnelPool: this.sshTunnelPool,
+      sql: "SELECT 1",
+      params: [],
+      maxRows: 1,
+      queryTimeoutMs: CONNECTION_TEST_TIMEOUT_MS,
+      connectTimeoutMs: CONNECTION_TEST_TIMEOUT_MS,
+      logger: plainLogger
+    });
+  }
+
+  async testSshConnection(sshServerId: string): Promise<void> {
+    await this.sshTunnelPool.testConnection(sshServerId, CONNECTION_TEST_TIMEOUT_MS);
   }
 
   async query(context: AuthContext, body: Partial<QueryRequest> | undefined): Promise<QueryResult> {

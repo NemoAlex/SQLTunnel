@@ -3,7 +3,21 @@ FROM node:24-bookworm AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm pkg delete \
+      'devDependencies.@types/react' \
+      'devDependencies.@types/react-dom' \
+      'devDependencies.@vitejs/plugin-react' \
+      devDependencies.concurrently \
+      devDependencies.cross-env \
+      devDependencies.electron \
+      devDependencies.electron-builder \
+      devDependencies.lucide-react \
+      devDependencies.react \
+      devDependencies.react-dom \
+      devDependencies.tsx \
+      devDependencies.vite \
+      devDependencies.wait-on \
+    && npm ci
 
 COPY tsconfig.json ./
 COPY src ./src

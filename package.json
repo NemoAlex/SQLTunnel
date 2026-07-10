@@ -27,11 +27,8 @@
     "@fastify/sensible": "^6.0.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "fastify": "^5.8.5",
-    "lucide-react": "^1.24.0",
     "mysql2": "^3.11.3",
     "pg": "^8.13.1",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
     "ssh2": "^1.16.0",
     "yaml": "^2.6.0",
     "zod": "^4.4.3"
@@ -47,6 +44,9 @@
     "cross-env": "^10.1.0",
     "electron": "^43.1.0",
     "electron-builder": "^26.15.3",
+    "lucide-react": "^1.24.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^8.1.4",
@@ -71,7 +71,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon-1024.png",
+      "icon": "assets/icon-1024-macos.png",
       "target": [
         "dmg",
         "zip"

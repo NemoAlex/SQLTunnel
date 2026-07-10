@@ -35,7 +35,7 @@ body,
 body {
   min-width: 0;
   background: #f5f6f8;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 button,
@@ -1432,14 +1432,14 @@ select:focus-visible {
 
 .info-callout strong,
 .security-banner strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .info-callout p,
 .security-banner p {
   margin: 4px 0 0;
   color: #7e899c;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -1466,7 +1466,7 @@ select:focus-visible {
 }
 
 .grant-heading strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .grant-heading span {
@@ -1532,7 +1532,7 @@ select:focus-visible {
 
 .grant-db strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1728,24 +1728,6 @@ select:focus-visible {
   color: #d94755;
 }
 
-.toast > button {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  margin-left: 4px;
-  padding: 0;
-  color: #8b92a0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.toast > button:hover {
-  background: #f0f1f4;
-}
-
 .loading-screen {
   display: flex;
   align-items: center;
@@ -1820,27 +1802,6 @@ select:focus-visible {
   font-weight: 690;
 }
 
-.main-endpoint {
-  display: inline-flex;
-  align-items: center;
-  max-width: 240px;
-  padding: 0;
-  gap: 5px;
-  overflow: hidden;
-  color: #7b8393;
-  border: 0;
-  background: transparent;
-  font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.main-endpoint:disabled {
-  cursor: default;
-}
-
 .main-power-switch {
   position: relative;
   width: 48px;
@@ -1902,7 +1863,7 @@ select:focus-visible {
   color: #858d9c;
   border: 0;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 640;
   cursor: pointer;
 }
@@ -1936,7 +1897,7 @@ select:focus-visible {
   color: #777f8f;
   border-radius: 9px;
   background: #eceef2;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 720;
 }
 
@@ -2016,7 +1977,7 @@ select:focus-visible {
 }
 
 .connection-group > header strong {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 680;
 }
 
@@ -2061,7 +2022,7 @@ select:focus-visible {
 
 .connection-row strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 660;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2232,7 +2193,7 @@ select:focus-visible {
 .settings-sidebar nav small {
   overflow: hidden;
   color: #9299a7;
-  font-size: 8px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2364,4 +2325,1657 @@ select:focus-visible {
   .local-only {
     display: none;
   }
+}
+
+/* macOS HIG-inspired Electron skin.
+   System color keywords keep controls aligned with the user's macOS accent and appearance. */
+:root {
+  color-scheme: light dark;
+  color: CanvasText;
+  background: Canvas;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  --ink: CanvasText;
+  --muted: GrayText;
+  --faint: GrayText;
+  --line: color-mix(in srgb, CanvasText 14%, transparent);
+  --panel: Canvas;
+  --blue: AccentColor;
+  --blue-dark: AccentColor;
+  --blue-soft: color-mix(in srgb, AccentColor 12%, Canvas);
+  --sidebar: color-mix(in srgb, Canvas 92%, GrayText 8%);
+  --mac-window: color-mix(in srgb, Canvas 96%, GrayText 3%, AccentColor 1%);
+  --mac-sidebar: color-mix(in srgb, Canvas 90%, GrayText 9%, AccentColor 1%);
+  --mac-border: color-mix(in srgb, CanvasText 11%, transparent);
+  --mac-hairline: color-mix(in srgb, CanvasText 7%, transparent);
+  --mac-secondary: color-mix(in srgb, CanvasText 62%, transparent);
+  --mac-tertiary: color-mix(in srgb, CanvasText 42%, transparent);
+  --mac-status-green: light-dark(rgb(36 138 61), rgb(48 209 88));
+  --mac-status-orange: light-dark(rgb(180 95 0), rgb(255 159 10));
+  --mac-status-red: light-dark(rgb(215 0 21), rgb(255 69 58));
+  --shadow: none;
+}
+
+body {
+  color: CanvasText;
+  background: var(--mac-window);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: AccentColor;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 2px;
+}
+
+.button {
+  min-height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  color: ButtonText;
+  border: 1px solid var(--mac-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: none;
+}
+
+.button:hover:not(:disabled),
+.button:active:not(:disabled) {
+  transform: none;
+  filter: brightness(0.98);
+}
+
+.button.primary,
+.button.primary:hover:not(:disabled) {
+  color: AccentColorText;
+  border-color: AccentColor;
+  background: AccentColor;
+  box-shadow: none;
+}
+
+/* Compact main window */
+.main-window-shell {
+  grid-template-rows: 38px 72px 42px minmax(0, 1fr) 44px;
+  color: CanvasText;
+  background: var(--mac-window);
+}
+
+.window-titlebar {
+  position: relative;
+  z-index: 20;
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 38px;
+  color: CanvasText;
+  border-bottom: 1px solid var(--mac-hairline);
+  background: color-mix(in srgb, Canvas 72%, transparent);
+  backdrop-filter: blur(22px) saturate(1.08);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.window-titlebar strong {
+  overflow: hidden;
+  max-width: calc(100% - 160px);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gateway-control {
+  min-height: 72px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--mac-hairline);
+  background: color-mix(in srgb, Canvas 76%, transparent);
+  backdrop-filter: blur(20px) saturate(1.08);
+}
+
+.gateway-copy {
+  gap: 9px;
+}
+
+.gateway-copy > div {
+  gap: 2px;
+}
+
+.gateway-copy strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--mac-tertiary);
+  box-shadow: none;
+}
+
+.status-dot.running {
+  background: var(--mac-status-green);
+  box-shadow: none;
+}
+
+.status-dot.starting,
+.status-dot.stopping {
+  background: var(--mac-status-orange);
+  box-shadow: none;
+}
+
+.status-dot.error {
+  background: var(--mac-status-red);
+  box-shadow: none;
+}
+
+.main-power-switch {
+  width: 34px;
+  height: 20px;
+  border: 1px solid var(--mac-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, CanvasText 18%, Canvas);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, Canvas 45%, transparent);
+  transition: background 120ms ease;
+}
+
+.main-power-switch > span {
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  color: var(--mac-secondary);
+  background: Canvas;
+  box-shadow: 0 1px 2px color-mix(in srgb, CanvasText 28%, transparent);
+  transition: left 120ms ease;
+}
+
+.main-power-switch > span svg {
+  width: 10px;
+  height: 10px;
+}
+
+.main-power-switch.on {
+  border-color: AccentColor;
+  background: AccentColor;
+}
+
+.main-power-switch.on > span {
+  left: 16px;
+  color: AccentColor;
+}
+
+.main-tabs {
+  align-items: center;
+  padding: 0 12px;
+  gap: 2px;
+  border-bottom: 1px solid var(--mac-hairline);
+  background: transparent;
+}
+
+.main-tabs > button {
+  height: 28px;
+  padding: 0 9px;
+  gap: 5px;
+  color: var(--mac-secondary);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.main-tabs > button::after {
+  display: none;
+}
+
+.main-tabs > button.active {
+  color: AccentColor;
+  border-color: transparent;
+  background: color-mix(in srgb, AccentColor 11%, transparent);
+  box-shadow: none;
+}
+
+.main-tabs > button.active svg {
+  color: AccentColor;
+}
+
+.main-tabs > button > span {
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  color: var(--mac-secondary);
+  border-radius: 7px;
+  background: color-mix(in srgb, CanvasText 9%, transparent);
+  font-size: 8px;
+}
+
+.connection-overview {
+  padding: 12px;
+}
+
+.connection-group {
+  margin-bottom: 10px;
+  border-color: var(--mac-hairline);
+  border-radius: 11px;
+  background: color-mix(in srgb, Canvas 97%, GrayText 3%);
+  box-shadow: 0 1px 2px color-mix(in srgb, CanvasText 4%, transparent);
+}
+
+.connection-group > header {
+  height: 30px;
+  padding: 0 10px;
+  border-bottom-color: var(--mac-hairline);
+  background: transparent;
+}
+
+.connection-group > header strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.connection-group > header span {
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  color: var(--mac-secondary);
+  border-radius: 8px;
+  background: color-mix(in srgb, CanvasText 8%, transparent);
+  font-size: 11px;
+}
+
+.connection-row {
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  min-height: 30px;
+  padding: 0 10px;
+  gap: 7px;
+  border-top-color: var(--mac-hairline);
+}
+
+.connection-row > div {
+  align-items: baseline;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.connection-row strong {
+  flex: 0 1 auto;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.connection-row small,
+.connection-label {
+  color: var(--mac-tertiary);
+  font-size: 12px;
+}
+
+.connection-empty {
+  padding: 18px 12px;
+  font-size: 12px;
+}
+
+.connection-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--mac-tertiary);
+}
+
+.connection-dot.ready,
+.connection-dot.connected,
+.connection-dot.active {
+  background: var(--mac-status-green);
+}
+
+.connection-row:has(.connection-dot.ready) .connection-label,
+.connection-row:has(.connection-dot.connected) .connection-label,
+.connection-row:has(.connection-dot.active) .connection-label {
+  color: var(--mac-status-green);
+}
+
+.connection-row.testable {
+  grid-template-columns: 8px minmax(0, 1fr) auto auto;
+}
+
+.connection-test-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  max-width: 112px;
+  height: 24px;
+  padding: 0 7px;
+  gap: 4px;
+  overflow: hidden;
+  color: var(--mac-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: color-mix(in srgb, CanvasText 5%, Canvas);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.connection-test-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-test-button:hover:not(:disabled) {
+  color: AccentColor;
+  border-color: color-mix(in srgb, AccentColor 18%, transparent);
+  background: color-mix(in srgb, AccentColor 9%, Canvas);
+}
+
+.connection-test-button:active:not(:disabled) {
+  background: color-mix(in srgb, AccentColor 15%, Canvas);
+  transform: scale(0.98);
+}
+
+.connection-test-button.testing {
+  cursor: wait;
+}
+
+.connection-test-button.testing svg {
+  animation: connection-test-spin 700ms linear infinite;
+}
+
+.connection-test-button.success {
+  color: var(--mac-status-green);
+  background: color-mix(in srgb, var(--mac-status-green) 9%, Canvas);
+}
+
+.connection-test-button.error {
+  color: var(--mac-status-red);
+  background: color-mix(in srgb, var(--mac-status-red) 8%, Canvas);
+}
+
+@keyframes connection-test-spin {
+  to { transform: rotate(360deg); }
+}
+
+.main-log-view {
+  padding: 10px 12px 12px;
+  grid-template-rows: 28px minmax(0, 1fr);
+}
+
+.main-log-toolbar {
+  padding: 0;
+  color: var(--mac-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.main-log-toolbar small {
+  color: var(--mac-tertiary);
+  font-size: 12px;
+}
+
+.main-log-console {
+  padding: 9px;
+  color: FieldText;
+  border: 1px solid var(--mac-border);
+  border-radius: 9px;
+  background: color-mix(in srgb, Field 97%, GrayText 3%);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, CanvasText 5%, transparent);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.main-log-console::placeholder {
+  color: var(--mac-tertiary);
+}
+
+.main-window-footer {
+  padding: 0 12px;
+  border-top-color: var(--mac-hairline);
+  background: color-mix(in srgb, Canvas 72%, transparent);
+  backdrop-filter: blur(20px) saturate(1.08);
+}
+
+.main-window-footer > div,
+.main-window-footer > button {
+  font-size: 12px;
+}
+
+.main-window-footer > div {
+  color: var(--mac-secondary);
+}
+
+.main-window-footer > button,
+.settings-config-folder {
+  height: 28px;
+  padding: 0 7px;
+  color: ButtonText;
+  border: 1px solid var(--mac-border);
+  border-color: transparent;
+  border-radius: 7px;
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.main-window-footer > button {
+  margin-left: auto;
+}
+
+/* Preferences window */
+.settings-shell {
+  grid-template-columns: 184px minmax(0, 1fr);
+  grid-template-rows: 38px minmax(0, 1fr);
+  color: CanvasText;
+  background: Canvas;
+}
+
+.settings-sidebar {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 14px 10px 10px;
+  border-right-color: var(--mac-hairline);
+  background: color-mix(in srgb, var(--mac-sidebar) 86%, transparent);
+  backdrop-filter: blur(28px) saturate(1.12);
+}
+
+.settings-title {
+  height: 34px;
+  padding: 0 6px;
+  gap: 7px;
+  color: CanvasText;
+}
+
+.settings-title svg {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-title strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-sidebar nav {
+  margin-top: 8px;
+  gap: 6px;
+}
+
+.settings-sidebar nav > button {
+  grid-template-columns: 16px minmax(0, 1fr);
+  min-height: 30px;
+  height: 30px;
+  padding: 0 8px;
+  gap: 6px;
+  color: CanvasText;
+  border: 0;
+  border-radius: 7px;
+  font-weight: 500;
+}
+
+.settings-sidebar nav > button:hover {
+  background: color-mix(in srgb, CanvasText 7%, transparent);
+}
+
+.settings-sidebar nav > button.active {
+  color: AccentColor;
+  border: 0;
+  background: color-mix(in srgb, AccentColor 12%, transparent);
+  box-shadow: none;
+}
+
+.settings-sidebar nav > button > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-sidebar nav > button > span {
+  display: block;
+}
+
+.settings-sidebar nav strong {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.settings-sidebar nav small,
+.settings-sidebar nav > button > svg:last-child {
+  display: none;
+}
+
+.settings-config-folder {
+  display: inline-flex;
+  width: 100%;
+  margin-top: auto;
+  padding: 0 6px;
+  gap: 6px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.settings-config-folder:hover {
+  color: CanvasText;
+  background: color-mix(in srgb, CanvasText 7%, transparent);
+}
+
+.settings-workspace {
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-rows: minmax(0, 1fr) 44px;
+}
+
+.settings-content {
+  background: var(--mac-window);
+}
+
+.settings-content .page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 30px 32px 44px;
+}
+
+.page-heading {
+  min-height: 52px;
+  margin-bottom: 22px;
+  gap: 16px;
+}
+
+.eyebrow {
+  display: none;
+}
+
+.page-heading h1 {
+  color: CanvasText;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.page-heading p {
+  margin-top: 5px;
+  color: var(--mac-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.editor-stack {
+  gap: 14px;
+}
+
+.editor-card,
+.settings-card {
+  border: 1px solid var(--mac-hairline);
+  border-radius: 13px;
+  background: color-mix(in srgb, Canvas 98%, GrayText 2%);
+  box-shadow: 0 1px 2px color-mix(in srgb, CanvasText 4%, transparent);
+}
+
+.editor-card-header,
+.static-card-heading {
+  min-height: 46px;
+  padding: 8px 12px;
+  gap: 9px;
+  background: transparent;
+}
+
+.editor-card-header:hover {
+  background: color-mix(in srgb, CanvasText 4%, Canvas);
+}
+
+.database-badge,
+.database-badge.mysql,
+.database-badge.ssh,
+.database-badge.client {
+  width: 28px;
+  height: 28px;
+  color: AccentColor;
+  border-radius: 8px;
+  background: color-mix(in srgb, AccentColor 11%, Canvas);
+}
+
+.database-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+.database-badge.tiny {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+}
+
+.editor-card-title,
+.static-card-heading > span:nth-child(2) {
+  gap: 1px;
+}
+
+.editor-card-title strong,
+.static-card-heading strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.editor-card-title small,
+.static-card-heading small {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.soft-badge,
+.type-badge {
+  height: 20px;
+  padding: 0 6px;
+  color: var(--mac-secondary);
+  border-color: var(--mac-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, CanvasText 4%, Canvas);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.type-badge.postgres,
+.type-badge.mysql {
+  color: AccentColor;
+  border-color: color-mix(in srgb, AccentColor 24%, transparent);
+  background: color-mix(in srgb, AccentColor 8%, Canvas);
+}
+
+.expand-icon {
+  color: var(--mac-tertiary);
+}
+
+.editor-card-body,
+.editor-card-body.visible {
+  padding: 0 16px 14px;
+  border-top-color: var(--mac-hairline);
+  background: transparent;
+}
+
+.static-card .editor-card-body,
+.client-card .editor-card-body {
+  padding: 16px;
+}
+
+.form-section {
+  padding: 16px 0;
+  border-bottom-color: var(--mac-hairline);
+}
+
+.form-section-title {
+  margin-bottom: 10px;
+  gap: 6px;
+}
+
+.form-section-title strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.form-section-title span {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.form-grid {
+  gap: 14px;
+}
+
+.field {
+  gap: 5px;
+}
+
+.field-label {
+  min-height: 14px;
+  color: CanvasText;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field-label small {
+  color: var(--mac-tertiary);
+  font-size: 12px;
+}
+
+.field-label em {
+  color: var(--mac-status-red);
+}
+
+.field input,
+.field select,
+.settings-number,
+.grant-limit {
+  height: 34px;
+  padding: 0 9px;
+  color: FieldText;
+  border: 1px solid var(--mac-border);
+  border-radius: 7px;
+  background: Canvas;
+  box-shadow: inset 0 1px 1px color-mix(in srgb, CanvasText 4%, transparent);
+  font-size: 13px;
+  transition: none;
+}
+
+.field input:hover,
+.field select:hover,
+.settings-number:hover,
+.grant-limit:hover {
+  border-color: color-mix(in srgb, CanvasText 28%, transparent);
+}
+
+.field input:focus,
+.field select:focus,
+.settings-number:focus,
+.grant-limit:focus {
+  border-color: AccentColor;
+}
+
+.field input::placeholder,
+.settings-number::placeholder,
+.grant-limit::placeholder {
+  color: var(--mac-tertiary);
+}
+
+.segmented-control {
+  height: 34px;
+  padding: 2px;
+  gap: 1px;
+  border-color: var(--mac-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+}
+
+.segmented-control button {
+  border-radius: 6px;
+  color: ButtonText;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.segmented-control button.active {
+  color: CanvasText;
+  background: Canvas;
+  box-shadow: 0 1px 3px color-mix(in srgb, CanvasText 12%, transparent);
+}
+
+.secret-input > button:not(.regenerate) {
+  right: 3px;
+  width: 24px;
+  height: 22px;
+  color: var(--mac-secondary);
+  border-radius: 4px;
+}
+
+.secret-input > button:hover,
+.secret-input > button.regenerate {
+  color: AccentColor;
+  background: color-mix(in srgb, AccentColor 9%, transparent);
+}
+
+.secret-input > button.regenerate {
+  font-size: 12px;
+}
+
+.danger-link {
+  font-size: 12px;
+}
+
+.editor-footer {
+  padding-top: 10px;
+}
+
+.danger-link,
+.icon-button.danger {
+  color: var(--mac-status-red);
+}
+
+.danger-link:hover,
+.icon-button.danger:hover {
+  border-color: color-mix(in srgb, var(--mac-status-red) 22%, transparent);
+  background: color-mix(in srgb, var(--mac-status-red) 8%, transparent);
+}
+
+.icon-button {
+  width: 24px;
+  height: 24px;
+  border-color: var(--mac-border);
+  border-radius: 5px;
+  background: ButtonFace;
+}
+
+.info-callout,
+.security-banner {
+  margin-top: 16px;
+  padding: 12px 14px;
+  gap: 8px;
+  color: var(--mac-secondary);
+  border-color: transparent;
+  border-radius: 11px;
+  background: color-mix(in srgb, AccentColor 7%, Canvas);
+}
+
+.info-callout strong,
+.security-banner strong {
+  color: CanvasText;
+  font-size: 12px;
+}
+
+.info-callout p,
+.security-banner p {
+  color: var(--mac-secondary);
+  font-size: 11px;
+}
+
+.grant-heading {
+  padding: 12px 0 8px;
+}
+
+.grant-heading strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.grant-heading span {
+  color: var(--mac-secondary);
+  font-size: 11px;
+}
+
+.grant-list {
+  border-color: var(--mac-border);
+  border-radius: 9px;
+}
+
+.grant-row,
+.grant-row.enabled {
+  min-height: 42px;
+  padding: 5px 8px;
+  border-top-color: var(--mac-hairline);
+  background: Canvas;
+}
+
+.grant-toggle input {
+  position: static;
+  width: 16px;
+  height: 16px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.grant-toggle > span {
+  display: none;
+}
+
+.grant-db strong {
+  font-size: 13px;
+}
+
+.grant-db small {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.permission-select {
+  height: 24px;
+  color: FieldText;
+  border-color: var(--mac-border);
+  border-radius: 5px;
+  background: Field;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.settings-card {
+  margin-bottom: 16px;
+  padding: 0 18px;
+}
+
+.panel-title {
+  min-height: 52px;
+  margin-bottom: 0;
+  padding: 8px 0;
+  gap: 8px;
+}
+
+.panel-title > span {
+  width: 24px;
+  height: 24px;
+  color: AccentColor;
+  border-radius: 6px;
+  background: color-mix(in srgb, AccentColor 10%, Canvas);
+}
+
+.panel-title strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel-title small {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.settings-row {
+  min-height: 52px;
+  gap: 18px;
+  border-top-color: var(--mac-hairline);
+}
+
+.settings-row > div {
+  gap: 2px;
+}
+
+.settings-row strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.settings-row span {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.settings-number {
+  width: 112px;
+}
+
+.settings-toggle-row {
+  cursor: default;
+}
+
+.native-checkbox {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.empty-state {
+  min-height: 220px;
+  padding: 36px;
+  border-style: solid;
+  border-color: var(--mac-hairline);
+  border-radius: 14px;
+  background: color-mix(in srgb, Canvas 98%, GrayText 2%);
+  box-shadow: 0 1px 2px color-mix(in srgb, CanvasText 4%, transparent);
+}
+
+.empty-icon {
+  width: 40px;
+  height: 40px;
+  color: AccentColor;
+  border-color: color-mix(in srgb, AccentColor 20%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, AccentColor 8%, Canvas);
+  box-shadow: none;
+}
+
+.empty-state h2 {
+  margin: 12px 0 5px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty-state p {
+  margin-bottom: 14px;
+  color: var(--mac-secondary);
+  font-size: 13px;
+}
+
+.settings-footer {
+  padding: 0 16px;
+  border-top-color: var(--mac-hairline);
+  background: color-mix(in srgb, Canvas 76%, transparent);
+  backdrop-filter: blur(22px) saturate(1.08);
+}
+
+.settings-footer > span {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.grant-disabled {
+  font-size: 12px;
+}
+
+.settings-footer .button {
+  min-height: 32px;
+}
+
+.toast {
+  min-height: 38px;
+  color: CanvasText;
+  border-color: var(--mac-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, Canvas 94%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, CanvasText 18%, transparent);
+  font-size: 12px;
+}
+
+.toast.success > svg {
+  color: var(--mac-status-green);
+}
+
+.toast.error,
+.toast.error > svg {
+  color: var(--mac-status-red);
+  border-color: color-mix(in srgb, var(--mac-status-red) 24%, transparent);
+}
+
+/* Codex-scale typography: hierarchy comes from weight and tone, not tiny text. */
+body {
+  font-size: 14px;
+}
+
+.main-log-toolbar,
+.main-log-toolbar small,
+.main-log-console,
+.main-window-footer > div,
+.main-window-footer > button,
+.settings-config-folder,
+.editor-card-title small,
+.static-card-heading small,
+.soft-badge,
+.type-badge,
+.form-section-title span,
+.field-label small,
+.secret-input > button.regenerate,
+.info-callout p,
+.security-banner p,
+.grant-heading span,
+.grant-db small,
+.permission-select,
+.settings-row span,
+.panel-title small,
+.settings-footer > span,
+.grant-disabled,
+.toast {
+  font-size: 12px;
+}
+
+.main-tabs > button,
+.connection-group > header strong,
+.connection-row strong,
+.settings-sidebar nav strong,
+.form-section-title strong,
+.field-label,
+.field input,
+.field select,
+.settings-number,
+.grant-limit,
+.segmented-control button,
+.info-callout strong,
+.security-banner strong,
+.grant-heading strong,
+.grant-db strong,
+.panel-title strong,
+.settings-row strong,
+.button {
+  font-size: 13px;
+}
+
+.gateway-copy strong,
+.settings-title strong {
+  font-size: 15px;
+}
+
+.editor-card-title strong,
+.static-card-heading strong,
+.page-heading p {
+  font-size: 14px;
+}
+
+.page-heading h1 {
+  font-size: 24px;
+}
+
+.advanced-settings {
+  padding-top: 8px;
+}
+
+.advanced-toggle {
+  display: grid;
+  grid-template-columns: 16px auto minmax(0, 1fr) 16px;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 8px;
+  gap: 8px;
+  color: CanvasText;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.advanced-toggle:hover {
+  background: color-mix(in srgb, CanvasText 5%, transparent);
+}
+
+.advanced-toggle > svg:first-child {
+  color: AccentColor;
+}
+
+.advanced-toggle strong {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.advanced-toggle small {
+  overflow: hidden;
+  color: var(--mac-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advanced-toggle > svg:last-child {
+  color: var(--mac-tertiary);
+  transition: transform 140ms ease;
+}
+
+.advanced-toggle > svg:last-child.expanded {
+  transform: rotate(90deg);
+}
+
+.advanced-settings-body {
+  padding: 4px 8px 2px;
+}
+
+.advanced-settings-body .form-section:last-child {
+  padding-bottom: 6px;
+  border-bottom: 0;
+}
+
+.client-card .advanced-toggle {
+  margin-bottom: 10px;
+}
+
+.grant-row,
+.grant-row.enabled {
+  grid-template-columns: 25px 22px minmax(100px, 1fr) 84px;
+}
+
+.grant-list.advanced .grant-row {
+  grid-template-columns: 25px 22px minmax(100px, 1fr) 72px 92px 92px;
+}
+
+.grant-disabled {
+  grid-column: 4 / -1;
+}
+
+.field-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 11px;
+  gap: 5px;
+  color: AccentColor;
+  border: 1px solid color-mix(in srgb, AccentColor 22%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, AccentColor 8%, Canvas);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.inline-action-button:hover {
+  background: color-mix(in srgb, AccentColor 13%, Canvas);
+}
+
+/* List-first settings and focused editors */
+.settings-workspace {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.settings-language {
+  width: 180px;
+  height: 34px;
+  padding: 0 28px 0 9px;
+  color: FieldText;
+  border: 1px solid var(--mac-border);
+  border-radius: 7px;
+  background: Canvas;
+  font-size: 13px;
+}
+
+.settings-language:focus {
+  border-color: AccentColor;
+  outline: none;
+}
+
+.settings-address-control {
+  display: flex;
+  width: 140px;
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.settings-address-control.has-custom {
+  display: grid;
+  width: 340px;
+  grid-template-columns: 140px minmax(0, 1fr);
+}
+
+.settings-address-control select,
+.settings-address-control input {
+  width: 100%;
+  height: 34px;
+  padding: 0 28px 0 9px;
+  color: FieldText;
+  border: 1px solid var(--mac-border);
+  border-radius: 7px;
+  background: Canvas;
+  font-size: 13px;
+}
+
+.settings-address-control input {
+  padding-right: 9px;
+  font-family: "SFMono-Regular", Menlo, monospace;
+}
+
+.settings-address-control select:focus,
+.settings-address-control input:focus {
+  border-color: AccentColor;
+  outline: none;
+}
+
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.record-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 12px;
+  gap: 10px;
+  color: CanvasText;
+  text-align: left;
+  border: 1px solid var(--mac-hairline);
+  border-radius: 11px;
+  background: color-mix(in srgb, Canvas 98%, GrayText 2%);
+  box-shadow: 0 1px 2px color-mix(in srgb, CanvasText 4%, transparent);
+  cursor: pointer;
+}
+
+.record-row:hover {
+  border-color: var(--mac-border);
+  background: color-mix(in srgb, CanvasText 3%, Canvas);
+}
+
+.record-row:focus-visible {
+  outline: 2px solid AccentColor;
+  outline-offset: 2px;
+}
+
+.record-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: AccentColor;
+  border-radius: 8px;
+  background: color-mix(in srgb, AccentColor 10%, Canvas);
+}
+
+.record-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.record-copy strong,
+.record-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.record-copy small {
+  color: var(--mac-secondary);
+  font-size: 12px;
+}
+
+.record-chevron {
+  color: var(--mac-tertiary);
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, CanvasText 18%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.modal-backdrop.elevated {
+  z-index: 220;
+  background: color-mix(in srgb, CanvasText 24%, transparent);
+}
+
+.editor-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  width: min(760px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  color: CanvasText;
+  border: 1px solid var(--mac-border);
+  border-radius: 14px;
+  background: Canvas;
+  box-shadow: 0 18px 54px color-mix(in srgb, CanvasText 28%, transparent), 0 2px 8px color-mix(in srgb, CanvasText 10%, transparent);
+}
+
+.editor-modal-header {
+  display: grid;
+  grid-template-columns: 1fr 24px 1fr;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--mac-hairline);
+}
+
+.editor-modal-header > strong {
+  grid-column: 2;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.editor-modal-header > button {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.editor-modal-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+}
+
+.modal-form .editor-card {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.modal-form .editor-card-header,
+.modal-form .static-card-heading,
+.modal-form .editor-footer {
+  display: none;
+}
+
+.modal-form .editor-card-body,
+.modal-form .editor-card-body.visible {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.modal-form .form-section:first-child {
+  padding-top: 0;
+}
+
+.modal-form .form-section:last-child {
+  border-bottom: 0;
+}
+
+.modal-error {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 20px;
+  gap: 7px;
+  color: var(--mac-status-red);
+  border-top: 1px solid color-mix(in srgb, var(--mac-status-red) 16%, transparent);
+  background: color-mix(in srgb, var(--mac-status-red) 6%, Canvas);
+  font-size: 13px;
+}
+
+.editor-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--mac-hairline);
+  background: color-mix(in srgb, Canvas 96%, GrayText 4%);
+}
+
+.editor-modal-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-test-button.success {
+  color: var(--mac-status-green);
+  border-color: color-mix(in srgb, var(--mac-status-green) 24%, transparent);
+  background: color-mix(in srgb, var(--mac-status-green) 8%, Canvas);
+}
+
+.editor-test-button.error {
+  color: var(--mac-status-red);
+  border-color: color-mix(in srgb, var(--mac-status-red) 24%, transparent);
+  background: color-mix(in srgb, var(--mac-status-red) 7%, Canvas);
+}
+
+.editor-test-button.testing svg {
+  animation: test-button-spin 800ms linear infinite;
+}
+
+@keyframes test-button-spin {
+  to { transform: rotate(360deg); }
+}
+
+.danger-button {
+  color: var(--mac-status-red);
+}
+
+.danger-button:hover {
+  border-color: color-mix(in srgb, var(--mac-status-red) 22%, transparent);
+  background: color-mix(in srgb, var(--mac-status-red) 8%, Canvas);
+}
+
+@media (max-width: 780px) {
+  .modal-backdrop {
+    padding: 16px;
+  }
+
+  .editor-modal {
+    width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
+  }
+}
+
+/* Click-to-open endpoint menu, kept inside the application window. */
+.endpoint-copy-control {
+  position: relative;
+  min-width: 0;
+  max-width: 286px;
+  flex: 1;
+}
+
+.endpoint-copy-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 7px;
+  gap: 6px;
+  color: var(--mac-secondary);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 100ms ease, background 100ms ease, border-color 100ms ease, transform 70ms ease;
+}
+
+.endpoint-copy-trigger > span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endpoint-copy-trigger:hover,
+.endpoint-copy-trigger:focus-visible {
+  color: CanvasText;
+  border-color: var(--mac-hairline);
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+}
+
+.endpoint-copy-trigger:focus-visible {
+  border-color: AccentColor;
+  outline: 2px solid color-mix(in srgb, AccentColor 24%, transparent);
+  outline-offset: 1px;
+}
+
+.endpoint-copy-trigger:active {
+  color: AccentColor;
+  background: color-mix(in srgb, AccentColor 11%, Canvas);
+  transform: scale(0.985);
+}
+
+.endpoint-copy-trigger.copied {
+  color: var(--mac-status-green);
+  border-color: color-mix(in srgb, var(--mac-status-green) 18%, transparent);
+  background: color-mix(in srgb, var(--mac-status-green) 8%, Canvas);
+}
+
+.endpoint-copy-trigger.menu-open {
+  color: AccentColor;
+  border-color: color-mix(in srgb, AccentColor 20%, transparent);
+  background: color-mix(in srgb, AccentColor 9%, Canvas);
+}
+
+.endpoint-menu-chevron {
+  flex: 0 0 auto;
+  transform: rotate(-90deg);
+  transition: transform 100ms ease;
+}
+
+.endpoint-copy-trigger.menu-open .endpoint-menu-chevron {
+  transform: rotate(90deg);
+}
+
+.endpoint-copy-menu {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  width: min(310px, calc(100vw - 32px));
+  padding: 5px;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--mac-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, Canvas 97%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, CanvasText 18%, transparent);
+  backdrop-filter: blur(22px) saturate(1.08);
+  animation: endpoint-menu-in 110ms ease-out;
+}
+
+.endpoint-copy-menu > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  align-items: center;
+  min-height: 42px;
+  padding: 5px 8px;
+  gap: 8px;
+  color: CanvasText;
+  text-align: left;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.endpoint-copy-menu > button:hover,
+.endpoint-copy-menu > button:focus-visible {
+  background: color-mix(in srgb, AccentColor 10%, Canvas);
+  outline: none;
+}
+
+.endpoint-copy-menu > button:active {
+  background: color-mix(in srgb, AccentColor 16%, Canvas);
+}
+
+.endpoint-copy-menu > button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.endpoint-copy-menu strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.endpoint-copy-menu small {
+  overflow: hidden;
+  color: var(--mac-secondary);
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.endpoint-copy-menu svg {
+  color: AccentColor;
+}
+
+@keyframes endpoint-menu-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

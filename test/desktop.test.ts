@@ -9,6 +9,7 @@ import {
   DesktopConfigStore
 } from "../electron/config-store.js";
 import { ServiceRuntime } from "../electron/service-runtime.js";
+import { resolveUiLocale } from "../shared/ui-locale.js";
 import { loadConfig } from "../src/config.js";
 import { GatewayService } from "../src/gateway-service.js";
 import { buildServer } from "../src/server.js";
@@ -78,6 +79,32 @@ test("desktop store rejects invalid config without replacing the saved file", (t
 
   assert.throws(() => store.saveGatewayConfig(invalid), /maxRows must be a positive integer/);
   assert.equal(fs.readFileSync(store.configPath, "utf8"), original);
+});
+
+test("desktop store persists and validates the listener address", (t) => {
+  const store = createStore(t);
+  const saved = store.savePreferences({
+    ...DEFAULT_DESKTOP_PREFERENCES,
+    host: "0.0.0.0",
+    port: 4567,
+    language: "en"
+  });
+
+  assert.equal(saved.host, "0.0.0.0");
+  assert.equal(saved.port, 4567);
+  assert.deepEqual(store.loadPreferences(), saved);
+  assert.throws(
+    () => store.savePreferences({ ...saved, host: " " }),
+    /listen address cannot be empty/
+  );
+});
+
+test("desktop UI follows supported system languages and falls back to English", () => {
+  assert.equal(resolveUiLocale("system", ["zh-Hans-CN"]), "zh-CN");
+  assert.equal(resolveUiLocale("system", ["zh-Hant-TW"]), "en");
+  assert.equal(resolveUiLocale("system", ["es-MX", "fr-FR"]), "fr");
+  assert.equal(resolveUiLocale("system", ["es-MX"]), "en");
+  assert.equal(resolveUiLocale("de", ["es-MX"]), "de");
 });
 
 test("desktop runtime starts the real Fastify gateway and stops cleanly", async (t) => {
@@ -186,6 +213,57 @@ test("gateway reports database activity and the connection result around each re
     { id: "app-db", active: true, succeeded: undefined },
     { id: "app-db", active: false, succeeded: false }
   ]);
+});
+
+test("gateway tests a configured database with a minimal read-only query", async () => {
+  const sql: string[] = [];
+  const timeouts: Array<{ query: number; connect: number }> = [];
+  const events: Array<{ id: string; active: boolean; succeeded?: boolean }> = [];
+  const gateway = new GatewayService({
+    defaults: {
+      maxRows: 100,
+      queryTimeoutMs: 30_000,
+      connectTimeoutMs: 30_000,
+      schemaCacheTtlMs: 0
+    },
+    sshServers: [],
+    clients: [],
+    dbServers: [{
+      id: "app-db",
+      type: "postgres",
+      description: "Application database",
+      database: {
+        host: "127.0.0.1",
+        port: 5432,
+        user: "app",
+        password: "secret",
+        database: "app"
+      }
+    }]
+  }, {
+    executeQuery: async (options) => {
+      sql.push(options.sql);
+      timeouts.push({ query: options.queryTimeoutMs, connect: options.connectTimeoutMs });
+      return {
+        columns: ["value"],
+        rows: [{ value: 1 }],
+        rowCount: 1,
+        durationMs: 1,
+        dbServerId: options.dbServer.id
+      };
+    },
+    onDatabaseActivity: (id, active, succeeded) => events.push({ id, active, succeeded })
+  });
+
+  await gateway.testConnection("app-db");
+
+  assert.deepEqual(sql, ["SELECT 1"]);
+  assert.deepEqual(timeouts, [{ query: 10_000, connect: 10_000 }]);
+  assert.deepEqual(events, [
+    { id: "app-db", active: true, succeeded: undefined },
+    { id: "app-db", active: false, succeeded: true }
+  ]);
+  await gateway.close();
 });
 
 test("server forwards completed HTTP requests to the desktop log callback", async (t) => {

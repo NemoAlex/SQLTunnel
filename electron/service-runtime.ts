@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { loadConfig } from "../src/config.js";
+import path from "node:path";
+import { loadConfig, normalizeGatewayConfig } from "../src/config.js";
+import { GatewayService } from "../src/gateway-service.js";
 import { buildServer } from "../src/server.js";
 import type { GatewayConfig } from "../src/types.js";
 import type {
@@ -9,8 +11,9 @@ import type {
   DesktopPreferences,
   ServiceStatus
 } from "../shared/desktop.js";
+import type { UiLocale } from "../shared/ui-locale.js";
+import { text } from "./i18n.js";
 
-const HOST = "127.0.0.1";
 const MAX_LOG_ENTRIES = 250;
 
 export class ServiceRuntime {
@@ -19,21 +22,23 @@ export class ServiceRuntime {
   private readonly logs: DesktopLogEntry[] = [];
   private readonly databaseStates = new Map<string, ConnectionIndicatorState>();
   private readonly sshStates = new Map<string, ConnectionIndicatorState>();
+  private gateway?: GatewayService;
   private status: ServiceStatus;
 
   constructor(
     private readonly configPath: string,
     preferences: DesktopPreferences,
     private readonly openApiPath: string,
-    private readonly onChange: () => void
+    private readonly onChange: () => void,
+    private locale: UiLocale = "en"
   ) {
     this.preferences = preferences;
     this.status = {
       phase: "stopped",
-      host: HOST,
+      host: preferences.host,
       port: preferences.port
     };
-    this.record("info", "桌面控制台已就绪");
+    this.record("info", text(this.locale, "Desktop console ready"));
   }
 
   getStatus(): ServiceStatus {
@@ -49,13 +54,15 @@ export class ServiceRuntime {
       databases: config.dbServers.map((dbServer) => ({
         id: dbServer.id,
         label: dbServer.id,
-        detail: `${dbServer.type === "postgres" ? "PostgreSQL" : "MySQL"} · ${dbServer.database.host}:${dbServer.database.port}`,
+        detail: [dbServer.type === "postgres" ? "PostgreSQL" : "MySQL", dbServer.description]
+          .filter(Boolean)
+          .join(" · "),
         state: this.databaseStates.get(dbServer.id) ?? "disconnected"
       })),
       sshServers: config.sshServers.map((sshServer) => ({
         id: sshServer.id,
         label: sshServer.id,
-        detail: `${sshServer.host}:${sshServer.port ?? 22}`,
+        detail: "",
         state: this.sshStates.get(sshServer.id) ?? "disconnected"
       }))
     };
@@ -64,9 +71,54 @@ export class ServiceRuntime {
   setPreferences(preferences: DesktopPreferences): void {
     this.preferences = preferences;
     if (this.status.phase !== "running") {
-      this.status = { ...this.status, port: preferences.port };
+      this.status = { ...this.status, host: preferences.host, port: preferences.port };
     }
     this.notify();
+  }
+
+  setLocale(locale: UiLocale): void {
+    this.locale = locale;
+  }
+
+  async testDatabaseConnection(dbServerId: string): Promise<void> {
+    const config = loadConfig(this.configPath);
+    for (const dbServer of config.dbServers) {
+      if (!this.databaseStates.has(dbServer.id)) this.databaseStates.set(dbServer.id, "disconnected");
+    }
+    for (const sshServer of config.sshServers) {
+      if (!this.sshStates.has(sshServer.id)) this.sshStates.set(sshServer.id, "disconnected");
+    }
+    const gateway = this.getOrCreateGateway(config);
+    this.record("info", text(this.locale, "Testing database connection: {id}", { id: dbServerId }));
+    try {
+      await gateway.testConnection(dbServerId);
+      this.record("success", text(this.locale, "Database connection succeeded: {id}", { id: dbServerId }));
+    } finally {
+      this.notify();
+    }
+  }
+
+  async testDraftDatabaseConnection(config: GatewayConfig, dbServerId: string): Promise<void> {
+    const gateway = new GatewayService(normalizeGatewayConfig(config, path.dirname(this.configPath)));
+    try {
+      await gateway.testConnection(dbServerId);
+    } finally {
+      await gateway.close();
+    }
+  }
+
+  async testDraftSshConnection(config: GatewayConfig, sshServerId: string): Promise<void> {
+    const gateway = new GatewayService(normalizeGatewayConfig(config, path.dirname(this.configPath)));
+    try {
+      await gateway.testSshConnection(sshServerId);
+    } finally {
+      await gateway.close();
+    }
+  }
+
+  async configurationChanged(): Promise<void> {
+    await this.closeGateway();
+    this.disconnectAll();
   }
 
   async start(): Promise<void> {
@@ -76,17 +128,22 @@ export class ServiceRuntime {
 
     this.status = {
       phase: "starting",
-      host: HOST,
+      host: this.preferences.host,
       port: this.preferences.port
     };
-    this.record("info", `正在启动 127.0.0.1:${this.preferences.port}`);
+    this.record("info", text(this.locale, "Starting on {host}:{port}", {
+      host: this.preferences.host,
+      port: this.preferences.port
+    }));
 
     let server: FastifyInstance | undefined;
     try {
       const config = loadConfig(this.configPath);
-      this.resetConnectionStates(config);
+      if (!this.gateway) this.resetConnectionStates(config);
+      const gateway = this.getOrCreateGateway(config);
       server = buildServer(config, {
         openApiPath: this.openApiPath,
+        gateway,
         onDatabaseActivity: (dbServerId, active, succeeded) =>
           this.handleDatabaseActivity(dbServerId, active, succeeded),
         onSshConnectionStatus: (sshServerId, connected) => this.handleSshStatus(sshServerId, connected),
@@ -96,69 +153,78 @@ export class ServiceRuntime {
         }
       });
       this.server = server;
-      await server.listen({ host: HOST, port: this.preferences.port });
-      const url = `http://${HOST}:${this.preferences.port}`;
+      await server.listen({ host: this.preferences.host, port: this.preferences.port });
+      const url = formatHttpUrl(this.preferences.host, this.preferences.port);
       this.status = {
         phase: "running",
-        host: HOST,
+        host: this.preferences.host,
         port: this.preferences.port,
         url,
         startedAt: new Date().toISOString()
       };
-      this.record("success", `SQLTunnel 已运行于 ${url}`);
+      this.record("success", text(this.locale, "SQLTunnel is running at {url}", { url }));
     } catch (error) {
-      await server?.close().catch(() => undefined);
+      if (server) {
+        await server.close().catch(() => undefined);
+        this.gateway = undefined;
+      } else {
+        await this.closeGateway().catch(() => undefined);
+      }
       this.server = undefined;
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(error, this.locale);
       this.status = {
         phase: "error",
-        host: HOST,
+        host: this.preferences.host,
         port: this.preferences.port,
         error: message
       };
       this.disconnectAll();
-      this.record("error", `启动失败：${message}`);
+      this.record("error", text(this.locale, "Startup failed: {message}", { message }));
       throw error;
     }
   }
 
   async stop(): Promise<void> {
     if (!this.server) {
+      await this.closeGateway();
+      this.disconnectAll();
       if (this.status.phase !== "stopped") {
         this.status = {
           phase: "stopped",
-          host: HOST,
+          host: this.preferences.host,
           port: this.preferences.port
         };
-        this.disconnectAll();
-        this.record("info", "SQLTunnel 已停止");
+        this.record("info", text(this.locale, "SQLTunnel stopped"));
       }
       return;
     }
 
     this.status = { ...this.status, phase: "stopping", error: undefined };
-    this.record("info", "正在停止 SQLTunnel");
+    this.record("info", text(this.locale, "Stopping SQLTunnel"));
     const server = this.server;
     this.server = undefined;
 
     try {
       await server.close();
+      this.gateway = undefined;
       this.status = {
         phase: "stopped",
-        host: HOST,
+        host: this.preferences.host,
         port: this.preferences.port
       };
       this.disconnectAll();
-      this.record("success", "SQLTunnel 已安全停止");
+      this.record("success", text(this.locale, "SQLTunnel stopped safely"));
     } catch (error) {
-      const message = getErrorMessage(error);
+      await this.closeGateway().catch(() => undefined);
+      this.disconnectAll();
+      const message = getErrorMessage(error, this.locale);
       this.status = {
         phase: "error",
-        host: HOST,
+        host: this.preferences.host,
         port: this.preferences.port,
         error: message
       };
-      this.record("error", `停止失败：${message}`);
+      this.record("error", text(this.locale, "Failed to stop: {message}", { message }));
       throw error;
     }
   }
@@ -210,11 +276,11 @@ export class ServiceRuntime {
     }
     this.databaseStates.set(dbServerId, active ? "active" : succeeded ? "ready" : "disconnected");
     if (active) {
-      this.record("info", `正在访问数据库：${dbServerId}`);
+      this.record("info", text(this.locale, "Accessing database: {id}", { id: dbServerId }));
     } else if (succeeded) {
-      this.record("success", `数据库请求完成：${dbServerId}`);
+      this.record("success", text(this.locale, "Database request completed: {id}", { id: dbServerId }));
     } else {
-      this.record("error", `数据库请求失败：${dbServerId}`);
+      this.record("error", text(this.locale, "Database request failed: {id}", { id: dbServerId }));
     }
   }
 
@@ -223,13 +289,35 @@ export class ServiceRuntime {
       return;
     }
     this.sshStates.set(sshServerId, connected ? "connected" : "disconnected");
-    this.record(connected ? "success" : "info", `SSH 隧道已${connected ? "连接" : "断开"}：${sshServerId}`);
+    this.record(
+      connected ? "success" : "info",
+      text(this.locale, connected ? "SSH tunnel connected: {id}" : "SSH tunnel disconnected: {id}", { id: sshServerId })
+    );
+  }
+
+  private getOrCreateGateway(config: GatewayConfig): GatewayService {
+    this.gateway ??= new GatewayService(config, {
+      onDatabaseActivity: (id, active, succeeded) => this.handleDatabaseActivity(id, active, succeeded),
+      onSshConnectionStatus: (id, connected) => this.handleSshStatus(id, connected)
+    });
+    return this.gateway;
+  }
+
+  private async closeGateway(): Promise<void> {
+    const gateway = this.gateway;
+    this.gateway = undefined;
+    await gateway?.close();
   }
 }
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown, locale: UiLocale): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
-  return "未知错误";
+  return text(locale, "Unknown error");
+}
+
+function formatHttpUrl(host: string, port: number): string {
+  const formattedHost = host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+  return `http://${formattedHost}:${port}`;
 }
