@@ -186,6 +186,8 @@ test("uses engine-specific metadata catalogs", () => {
   assert.match(getSchemaSql("mysql"), /information_schema\.columns/i);
   assert.match(getSchemaSql("mysql"), /database\(\)/i);
   assert.match(getSchemaSql("mysql"), /cast\(t\.table_name as char\) as table_name/i);
+  assert.match(getSchemaSql("mysql"), /c\.ordinal_position as ordinal_position/i);
+  assert.match(getSchemaSql("mysql"), /c\.is_nullable as is_nullable/i);
   assert.match(getSchemaSql("postgres"), /pg_class/i);
   assert.match(getSchemaSql("postgres"), /pg_catalog/);
 });

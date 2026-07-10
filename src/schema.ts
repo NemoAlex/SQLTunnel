@@ -15,13 +15,13 @@ select
   cast(t.table_schema as char) as schema_name,
   cast(t.table_name as char) as table_name,
   cast(t.table_type as char) as table_type,
-  t.table_comment,
+  t.table_comment as table_comment,
   cast(c.column_name as char) as column_name,
   cast(c.column_type as char) as data_type,
-  c.is_nullable,
-  c.column_default,
-  c.column_comment,
-  c.ordinal_position,
+  c.is_nullable as is_nullable,
+  c.column_default as column_default,
+  c.column_comment as column_comment,
+  c.ordinal_position as ordinal_position,
   coalesce(k.is_primary, 0) as is_primary,
   coalesce(k.is_unique, 0) as is_unique
 from information_schema.tables t
