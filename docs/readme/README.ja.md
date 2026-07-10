@@ -61,7 +61,7 @@ FASTIFY_HOST=127.0.0.1 FASTIFY_PORT=3001 npm run start
 ```yaml
 services:
   sqltunnel:
-    image: nemoalex/sqltunnel:1.0.1
+    image: nemoalex/sqltunnel:1.0.2
     container_name: sqltunnel
     restart: unless-stopped
     ports:

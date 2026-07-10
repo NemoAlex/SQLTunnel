@@ -61,7 +61,7 @@ Use the published SQLTunnel image with Docker Compose:
 ```yaml
 services:
   sqltunnel:
-    image: nemoalex/sqltunnel:1.0.1
+    image: nemoalex/sqltunnel:1.0.2
     container_name: sqltunnel
     restart: unless-stopped
     ports:

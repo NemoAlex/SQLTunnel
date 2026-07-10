@@ -61,7 +61,7 @@ Docker Compose로 배포된 SQLTunnel 이미지를 사용합니다.
 ```yaml
 services:
   sqltunnel:
-    image: nemoalex/sqltunnel:1.0.1
+    image: nemoalex/sqltunnel:1.0.2
     container_name: sqltunnel
     restart: unless-stopped
     ports:
