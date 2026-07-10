@@ -9,4 +9,3 @@ services:
       - "3000:3000"
     volumes:
       - ./config:/app/config:ro
-      - ./backups:/app/backups

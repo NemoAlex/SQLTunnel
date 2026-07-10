@@ -157,37 +157,8 @@ Detailed setup guides:
 - [Codex](docs/codex.md)
 - [Hermes](docs/hermes.md)
 
-## Backup
-
-Backups can export PostgreSQL and MySQL databases on a schedule or on demand, then manage the resulting files according to retention policies.
-
-```bash
-cp config/backup.example.yaml config/backup.yaml
-npm run build
-node dist/cli.js backup list
-node dist/cli.js backup run --job prod-postgres-daily
-```
-
-`backup.yaml` defines schedules and retention; database/SSH settings still come from `gateway.yaml`. Backups use `pg_dump` for PostgreSQL and `mysqldump` for MySQL. Custom binary paths are supported:
-
-```yaml
-defaults:
-  binaries:
-    pgDump: /usr/local/bin/pg_dump
-    mySqlDump: /usr/local/bin/mysqldump
-```
-
-The Docker image includes both dump tools. Mount a writable output directory when enabling backups:
-
-```yaml
-volumes:
-  - ./config:/app/config:ro
-  - ./backups:/app/backups
-```
-
 ## Reference
 
-- [Backup](#backup)
 - [Configuration reference](docs/configuration.md)
 - [API reference](docs/api.md)
 - [Dify MCP setup guide](docs/dify.md)

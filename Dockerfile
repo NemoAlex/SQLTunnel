@@ -15,10 +15,6 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends postgresql-client default-mysql-client \
-  && rm -rf /var/lib/apt/lists/*
-
 COPY package*.json ./
 RUN npm ci --omit=dev
 

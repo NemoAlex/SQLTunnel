@@ -157,37 +157,8 @@ Schema 缓存时间可通过 `defaults.schemaCacheTtlMs` 调整；设为 `0` 可
 - [Codex](docs/codex.zh-CN.md)
 - [Hermes](docs/hermes.zh-CN.md)
 
-## 备份功能
-
-备份功能支持按计划或手动导出 PostgreSQL 和 MySQL 数据库，并按保留策略管理备份文件。
-
-```bash
-cp config/backup.example.yaml config/backup.yaml
-npm run build
-node dist/cli.js backup list
-node dist/cli.js backup run --job prod-postgres-daily
-```
-
-`backup.yaml` 只写调度和保留策略；数据库和 SSH 配置仍来自 `gateway.yaml`。备份使用 PostgreSQL 的 `pg_dump` 和 MySQL 的 `mysqldump`，也可以指定工具路径：
-
-```yaml
-defaults:
-  binaries:
-    pgDump: /usr/local/bin/pg_dump
-    mySqlDump: /usr/local/bin/mysqldump
-```
-
-Docker 镜像内置两个 dump 工具。启用备份时挂载可写目录：
-
-```yaml
-volumes:
-  - ./config:/app/config:ro
-  - ./backups:/app/backups
-```
-
 ## 参考文档
 
-- [备份功能](#备份功能)
 - [配置参考](docs/configuration.zh-CN.md)
 - [API 参考](docs/api.zh-CN.md)
 - [Dify MCP 配置指南](docs/dify.zh-CN.md)

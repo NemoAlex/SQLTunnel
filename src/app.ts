@@ -1,5 +1,3 @@
-import { loadBackupConfig } from "./backup-config.js";
-import { startBackupScheduler } from "./backup-scheduler.js";
 import { loadConfig } from "./config.js";
 import { GatewayError } from "./errors.js";
 import { buildServer } from "./server.js";
@@ -7,14 +5,6 @@ import { buildServer } from "./server.js";
 export async function startServer() {
   const config = loadConfig();
   const app = buildServer(config);
-  const scheduler = startBackupScheduler(config, loadBackupConfig(config), {
-    info: (message) => console.info(message),
-    error: (message, error) => console.error(message, error)
-  });
-
-  app.addHook("onClose", async () => {
-    await scheduler?.stop();
-  });
 
   try {
     await app.listen(resolveListenOptions());
