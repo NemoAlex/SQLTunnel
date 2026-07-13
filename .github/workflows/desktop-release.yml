@@ -72,8 +72,8 @@ jobs:
             artifact: sqltunnel-windows-x64
     runs-on: ${{ matrix.os }}
     env:
-      ELECTRON_CACHE: ${{ runner.temp }}/electron
-      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder
+      ELECTRON_CACHE: ${{ github.workspace }}/../.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/../.cache/electron-builder
 
     steps:
       - name: Check out source
