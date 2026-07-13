@@ -2207,26 +2207,6 @@ select:focus-visible {
   opacity: 1;
 }
 
-.settings-config-folder {
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  margin-top: auto;
-  padding: 0 10px;
-  gap: 7px;
-  color: #777f90;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  font-size: 9px;
-  cursor: pointer;
-}
-
-.settings-config-folder:hover {
-  color: #4f596e;
-  background: rgba(255, 255, 255, 0.6);
-}
-
 .settings-workspace {
   display: grid;
   min-width: 0;
@@ -2772,8 +2752,7 @@ textarea:focus-visible {
   color: var(--mac-secondary);
 }
 
-.main-window-footer > button,
-.settings-config-folder {
+.main-window-footer > button {
   height: 28px;
   padding: 0 7px;
   color: ButtonText;
@@ -2869,21 +2848,6 @@ textarea:focus-visible {
 .settings-sidebar nav small,
 .settings-sidebar nav > button > svg:last-child {
   display: none;
-}
-
-.settings-config-folder {
-  display: inline-flex;
-  width: 100%;
-  margin-top: auto;
-  padding: 0 6px;
-  gap: 6px;
-  border-color: transparent;
-  background: transparent;
-}
-
-.settings-config-folder:hover {
-  color: CanvasText;
-  background: color-mix(in srgb, CanvasText 7%, transparent);
 }
 
 .settings-workspace {
@@ -3397,7 +3361,6 @@ body {
 .main-log-console,
 .main-window-footer > div,
 .main-window-footer > button,
-.settings-config-folder,
 .editor-card-title small,
 .static-card-heading small,
 .soft-badge,
@@ -3847,18 +3810,20 @@ body {
 /* Click-to-open endpoint menu, kept inside the application window. */
 .endpoint-copy-control {
   position: relative;
+  width: fit-content;
   min-width: 0;
   max-width: 286px;
-  flex: 1;
+  flex: 0 1 auto;
 }
 
 .endpoint-copy-trigger {
-  display: flex;
-  width: 100%;
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
   min-width: 0;
   height: 28px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 0 7px;
   gap: 6px;
   color: var(--mac-secondary);

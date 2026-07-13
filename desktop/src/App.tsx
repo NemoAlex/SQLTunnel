@@ -7,7 +7,6 @@ import {
   Database,
   Eye,
   EyeOff,
-  FolderOpen,
   KeyRound,
   Network,
   Plus,
@@ -237,7 +236,6 @@ export default function App() {
   return (
     <I18nContext.Provider value={{ locale, t }}>
       <SettingsWindow
-        snapshot={snapshot}
         config={config}
         preferences={preferences}
         section={section}
@@ -274,7 +272,6 @@ function MainWindow({ snapshot, busy, notice, onToggle }: {
           <span className={`status-dot ${snapshot.service.phase}`} />
           <div>
             <strong>{statusLabels[snapshot.service.phase]}</strong>
-            <small>{t("Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.")}</small>
           </div>
         </div>
         <button
@@ -300,7 +297,7 @@ function MainWindow({ snapshot, busy, notice, onToggle }: {
 
       {activeTab === "status" ? (
         <main className="connection-overview">
-          <ConnectionGroup title={t("Database servers")} connections={snapshot.connections.databases} emptyLabel={t("No databases configured")} testable />
+          <ConnectionGroup title={t("Database servers")} connections={snapshot.connections.databases} emptyLabel={t("No databases configured")} testable showDetails={false} />
           <ConnectionGroup title={t("SSH connections")} connections={snapshot.connections.sshServers} emptyLabel={t("No SSH configured")} />
         </main>
       ) : (
@@ -459,11 +456,12 @@ function formatLogTimestamp(timestamp: string, locale: UiLocale): string {
   }).format(new Date(timestamp)).replaceAll("/", "-");
 }
 
-function ConnectionGroup({ title, connections, emptyLabel, testable = false }: {
+function ConnectionGroup({ title, connections, emptyLabel, testable = false, showDetails = true }: {
   title: string;
   connections: ConnectionIndicator[];
   emptyLabel: string;
   testable?: boolean;
+  showDetails?: boolean;
 }) {
   return (
     <section className="connection-group">
@@ -471,13 +469,19 @@ function ConnectionGroup({ title, connections, emptyLabel, testable = false }: {
       <div className="connection-list">
         {connections.length === 0 ? (
           <div className="connection-empty">{emptyLabel}</div>
-        ) : connections.map((connection) => <ConnectionRow key={connection.id} connection={connection} testable={testable} />)}
+        ) : connections.map((connection) => (
+          <ConnectionRow key={connection.id} connection={connection} testable={testable} showDetails={showDetails} />
+        ))}
       </div>
     </section>
   );
 }
 
-function ConnectionRow({ connection, testable }: { connection: ConnectionIndicator; testable: boolean }) {
+function ConnectionRow({ connection, testable, showDetails }: {
+  connection: ConnectionIndicator;
+  testable: boolean;
+  showDetails: boolean;
+}) {
   const { t } = useI18n();
   const [testState, setTestState] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testError, setTestError] = useState<string>();
@@ -523,7 +527,7 @@ function ConnectionRow({ connection, testable }: { connection: ConnectionIndicat
       <span className={`connection-dot ${connection.state}`} />
       <div>
         <strong>{connection.label}</strong>
-        {(testError || connection.detail) && <small title={testError}>{testError ?? connection.detail}</small>}
+        {(testError || (showDetails && connection.detail)) && <small title={testError}>{testError ?? connection.detail}</small>}
       </div>
       {testable && (
         <button
@@ -543,7 +547,6 @@ function ConnectionRow({ connection, testable }: { connection: ConnectionIndicat
 }
 
 function SettingsWindow({
-  snapshot,
   config,
   preferences,
   section,
@@ -552,7 +555,6 @@ function SettingsWindow({
   onConfigChange,
   onPreferencesChange
 }: {
-  snapshot: DesktopSnapshot;
   config: GatewayConfig;
   preferences: DesktopPreferences;
   section: Section;
@@ -591,9 +593,6 @@ function SettingsWindow({
             );
           })}
         </nav>
-        <button className="settings-config-folder" onClick={() => void window.sqlTunnel.openConfigFolder()} title={snapshot.configPath}>
-          <FolderOpen size={14} /><span>{t("Open configuration folder")}</span>
-        </button>
       </aside>
       <section className="settings-workspace">
         <main className="settings-content">
