@@ -39,10 +39,10 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -67,20 +67,37 @@ jobs:
 
       - name: Package macOS x64 and arm64
         if: runner.os == 'macOS'
-        run: npx electron-builder --mac --x64 --arm64 --publish never
         env:
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SQLTUNNEL_MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          SQLTUNNEL_MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          SQLTUNNEL_APPLE_ID: ${{ secrets.APPLE_ID }}
+          SQLTUNNEL_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          SQLTUNNEL_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -n "$SQLTUNNEL_MAC_CSC_LINK" ]]; then
+            export CSC_LINK="$SQLTUNNEL_MAC_CSC_LINK"
+            export CSC_KEY_PASSWORD="$SQLTUNNEL_MAC_CSC_KEY_PASSWORD"
+            export APPLE_ID="$SQLTUNNEL_APPLE_ID"
+            export APPLE_APP_SPECIFIC_PASSWORD="$SQLTUNNEL_APPLE_APP_SPECIFIC_PASSWORD"
+            export APPLE_TEAM_ID="$SQLTUNNEL_APPLE_TEAM_ID"
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npx electron-builder --mac --x64 --arm64 --publish never
 
       - name: Package Windows x64 and arm64
         if: runner.os == 'Windows'
-        run: npx electron-builder --win --x64 --arm64 --publish never
         env:
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          SQLTUNNEL_WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          SQLTUNNEL_WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if ($env:SQLTUNNEL_WIN_CSC_LINK) {
+            $env:CSC_LINK = $env:SQLTUNNEL_WIN_CSC_LINK
+            $env:CSC_KEY_PASSWORD = $env:SQLTUNNEL_WIN_CSC_KEY_PASSWORD
+          } else {
+            $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
+          }
+          npx electron-builder --win --x64 --arm64 --publish never
 
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
