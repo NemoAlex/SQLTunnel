@@ -4,6 +4,11 @@ type TranslationValues = Record<string, string | number>;
 export type Translate = (message: string, values?: TranslationValues) => string;
 
 const zhCN: Record<string, string> = {
+  "Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.": "面向 MySQL 与 PostgreSQL 的安全 MCP 和 OpenAPI 网关。",
+  "Connect MySQL and PostgreSQL directly or through reusable SSH tunnels, then test each connection before saving.": "直连 MySQL、PostgreSQL，或复用 SSH 隧道，并可在保存前测试每个连接。",
+  "Create reusable SSH routes with passwords, private keys, SSH config aliases, and ProxyJump.": "使用密码、私钥、SSH Config 别名和 ProxyJump 创建可复用的 SSH 路由。",
+  "Issue Bearer API keys and grant per-database read or write access with optional limits.": "签发 Bearer API Key，并按数据库授予读写权限及可选限制。",
+  "Configure the local MCP and OpenAPI endpoints, startup behavior, language, and default query safeguards.": "配置本地 MCP 与 OpenAPI 端点、启动行为、界面语言和默认查询保护。",
   "Test": "测试", "Testing": "测试中", "Connection succeeded": "连接成功", "Connection failed": "连接失败", "Test connection": "测试连接",
   "SQLTunnel Settings": "SQLTunnel 设置",
   "Configuration is not loaded": "配置尚未载入",
@@ -173,6 +178,11 @@ const zhCN: Record<string, string> = {
 };
 
 const ja: Record<string, string> = {
+  "Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.": "MySQL と PostgreSQL のための安全な MCP / OpenAPI ゲートウェイです。",
+  "Connect MySQL and PostgreSQL directly or through reusable SSH tunnels, then test each connection before saving.": "MySQL と PostgreSQL に直接または再利用可能な SSH トンネルで接続し、保存前に接続をテストします。",
+  "Create reusable SSH routes with passwords, private keys, SSH config aliases, and ProxyJump.": "パスワード、秘密鍵、SSH Config エイリアス、ProxyJump を使って再利用可能な SSH 経路を作成します。",
+  "Issue Bearer API keys and grant per-database read or write access with optional limits.": "Bearer API キーを発行し、データベースごとに読み取り・書き込み権限と任意の制限を設定します。",
+  "Configure the local MCP and OpenAPI endpoints, startup behavior, language, and default query safeguards.": "ローカル MCP/OpenAPI エンドポイント、起動動作、言語、既定のクエリ保護を設定します。",
   "Test": "テスト", "Testing": "テスト中", "Connection succeeded": "接続成功", "Connection failed": "接続失敗", "Test connection": "接続をテスト",
   "SQLTunnel Settings": "SQLTunnel 設定", "Configuration is not loaded": "設定を読み込めません", "Configuration saved": "設定を保存しました", "Configuration saved. Restart the service to apply changes.": "設定を保存しました。サービスを再起動すると反映されます", "SQLTunnel started": "SQLTunnel を起動しました", "Opening SQLTunnel": "SQLTunnel を開いています", "Loading local configuration and service status…": "ローカル設定とサービス状態を読み込んでいます…",
   "Stopped": "停止中", "Starting": "起動中", "Running": "実行中", "Stopping": "停止処理中", "Error": "エラー", "Stop service": "サービスを停止", "Start service": "サービスを開始", "Main window content": "メインウインドウの内容", "Status": "状態", "Logs": "ログ", "Database servers": "データベースサーバー", "No databases configured": "データベース未設定", "SSH connections": "SSH 接続", "No SSH configured": "SSH 未設定", "Local access only": "ローカルアクセスのみ", "Listening on {host}": "{host} で待機", "Settings…": "設定…", "Runtime log": "実行ログ", "{count} entries": "{count} 件", "Logs will appear here after the service starts.": "サービスを開始すると、ここにログが表示されます。", "Not connected": "未接続", "Connected": "接続済み", "Request active": "リクエスト中",
@@ -185,6 +195,11 @@ const ja: Record<string, string> = {
 };
 
 const ko: Record<string, string> = {
+  "Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.": "MySQL 및 PostgreSQL을 위한 안전한 MCP와 OpenAPI 게이트웨이입니다.",
+  "Connect MySQL and PostgreSQL directly or through reusable SSH tunnels, then test each connection before saving.": "MySQL과 PostgreSQL에 직접 또는 재사용 가능한 SSH 터널로 연결하고 저장 전에 테스트합니다.",
+  "Create reusable SSH routes with passwords, private keys, SSH config aliases, and ProxyJump.": "비밀번호, 개인 키, SSH Config 별칭 및 ProxyJump로 재사용 가능한 SSH 경로를 만듭니다.",
+  "Issue Bearer API keys and grant per-database read or write access with optional limits.": "Bearer API 키를 발급하고 데이터베이스별 읽기·쓰기 권한과 선택적 제한을 부여합니다.",
+  "Configure the local MCP and OpenAPI endpoints, startup behavior, language, and default query safeguards.": "로컬 MCP/OpenAPI 엔드포인트, 시작 동작, 언어 및 기본 쿼리 보호를 설정합니다.",
   "Test": "테스트", "Testing": "테스트 중", "Connection succeeded": "연결 성공", "Connection failed": "연결 실패", "Test connection": "연결 테스트",
   "SQLTunnel Settings": "SQLTunnel 설정", "Configuration is not loaded": "설정을 불러오지 못했습니다", "Configuration saved": "설정이 저장되었습니다", "Configuration saved. Restart the service to apply changes.": "설정이 저장되었습니다. 서비스를 다시 시작하면 적용됩니다", "SQLTunnel started": "SQLTunnel이 시작되었습니다", "Opening SQLTunnel": "SQLTunnel 여는 중", "Loading local configuration and service status…": "로컬 설정과 서비스 상태를 불러오는 중…",
   "Stopped": "중지됨", "Starting": "시작 중", "Running": "실행 중", "Stopping": "중지 중", "Error": "오류", "Stop service": "서비스 중지", "Start service": "서비스 시작", "Main window content": "기본 창 내용", "Status": "상태", "Logs": "로그", "Database servers": "데이터베이스 서버", "No databases configured": "설정된 데이터베이스 없음", "SSH connections": "SSH 연결", "No SSH configured": "설정된 SSH 없음", "Local access only": "로컬 접근만 허용", "Listening on {host}": "{host}에서 수신", "Settings…": "설정…", "Runtime log": "실행 로그", "{count} entries": "{count}개", "Logs will appear here after the service starts.": "서비스가 시작되면 여기에 로그가 표시됩니다.", "Not connected": "연결 안 됨", "Connected": "연결됨", "Request active": "요청 중",
@@ -197,6 +212,11 @@ const ko: Record<string, string> = {
 };
 
 const fr: Record<string, string> = {
+  "Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.": "Passerelle MCP et OpenAPI sécurisée pour MySQL et PostgreSQL.",
+  "Connect MySQL and PostgreSQL directly or through reusable SSH tunnels, then test each connection before saving.": "Connectez MySQL et PostgreSQL directement ou via des tunnels SSH réutilisables, puis testez chaque connexion avant de l’enregistrer.",
+  "Create reusable SSH routes with passwords, private keys, SSH config aliases, and ProxyJump.": "Créez des routes SSH réutilisables avec mots de passe, clés privées, alias SSH Config et ProxyJump.",
+  "Issue Bearer API keys and grant per-database read or write access with optional limits.": "Émettez des clés API Bearer et accordez des accès en lecture ou écriture par base avec des limites facultatives.",
+  "Configure the local MCP and OpenAPI endpoints, startup behavior, language, and default query safeguards.": "Configurez les endpoints MCP et OpenAPI locaux, le démarrage, la langue et les protections de requête par défaut.",
   "Test": "Tester", "Testing": "Test en cours", "Connection succeeded": "Connexion réussie", "Connection failed": "Échec de connexion", "Test connection": "Tester la connexion",
   "SQLTunnel Settings": "Réglages de SQLTunnel", "Configuration is not loaded": "La configuration n’est pas chargée", "Configuration saved": "Configuration enregistrée", "Configuration saved. Restart the service to apply changes.": "Configuration enregistrée. Redémarrez le service pour appliquer les modifications", "SQLTunnel started": "SQLTunnel a démarré", "Opening SQLTunnel": "Ouverture de SQLTunnel", "Loading local configuration and service status…": "Chargement de la configuration locale et de l’état du service…",
   "Stopped": "Arrêté", "Starting": "Démarrage", "Running": "En cours", "Stopping": "Arrêt en cours", "Error": "Erreur", "Stop service": "Arrêter le service", "Start service": "Démarrer le service", "Main window content": "Contenu de la fenêtre principale", "Status": "État", "Logs": "Journaux", "Database servers": "Serveurs de bases de données", "No databases configured": "Aucune base configurée", "SSH connections": "Connexions SSH", "No SSH configured": "Aucune connexion SSH configurée", "Local access only": "Accès local uniquement", "Listening on {host}": "Écoute sur {host}", "Settings…": "Réglages…", "Runtime log": "Journal d’exécution", "{count} entries": "{count} entrées", "Logs will appear here after the service starts.": "Les journaux apparaîtront ici après le démarrage du service.", "Not connected": "Non connecté", "Connected": "Connecté", "Request active": "Requête en cours",
@@ -209,6 +229,11 @@ const fr: Record<string, string> = {
 };
 
 const de: Record<string, string> = {
+  "Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.": "Sicheres MCP- und OpenAPI-Gateway für MySQL und PostgreSQL.",
+  "Connect MySQL and PostgreSQL directly or through reusable SSH tunnels, then test each connection before saving.": "MySQL und PostgreSQL direkt oder über wiederverwendbare SSH-Tunnel verbinden und jede Verbindung vor dem Speichern testen.",
+  "Create reusable SSH routes with passwords, private keys, SSH config aliases, and ProxyJump.": "Wiederverwendbare SSH-Routen mit Passwörtern, privaten Schlüsseln, SSH-Config-Aliasen und ProxyJump erstellen.",
+  "Issue Bearer API keys and grant per-database read or write access with optional limits.": "Bearer-API-Schlüssel ausstellen und pro Datenbank Lese- oder Schreibzugriff mit optionalen Limits gewähren.",
+  "Configure the local MCP and OpenAPI endpoints, startup behavior, language, and default query safeguards.": "Lokale MCP- und OpenAPI-Endpunkte, Startverhalten, Sprache und standardmäßige Abfrageschutzwerte konfigurieren.",
   "Test": "Testen", "Testing": "Test läuft", "Connection succeeded": "Verbindung erfolgreich", "Connection failed": "Verbindung fehlgeschlagen", "Test connection": "Verbindung testen",
   "SQLTunnel Settings": "SQLTunnel-Einstellungen", "Configuration is not loaded": "Konfiguration ist nicht geladen", "Configuration saved": "Konfiguration gespeichert", "Configuration saved. Restart the service to apply changes.": "Konfiguration gespeichert. Starten Sie den Dienst neu, um die Änderungen anzuwenden", "SQLTunnel started": "SQLTunnel wurde gestartet", "Opening SQLTunnel": "SQLTunnel wird geöffnet", "Loading local configuration and service status…": "Lokale Konfiguration und Dienststatus werden geladen…",
   "Stopped": "Gestoppt", "Starting": "Wird gestartet", "Running": "Läuft", "Stopping": "Wird gestoppt", "Error": "Fehler", "Stop service": "Dienst stoppen", "Start service": "Dienst starten", "Main window content": "Inhalt des Hauptfensters", "Status": "Status", "Logs": "Protokoll", "Database servers": "Datenbankserver", "No databases configured": "Keine Datenbank konfiguriert", "SSH connections": "SSH-Verbindungen", "No SSH configured": "Kein SSH konfiguriert", "Local access only": "Nur lokaler Zugriff", "Listening on {host}": "Lauscht auf {host}", "Settings…": "Einstellungen…", "Runtime log": "Laufzeitprotokoll", "{count} entries": "{count} Einträge", "Logs will appear here after the service starts.": "Nach dem Start des Dienstes erscheinen hier die Protokolle.", "Not connected": "Nicht verbunden", "Connected": "Verbunden", "Request active": "Anfrage aktiv",

@@ -8,6 +8,7 @@ import {
   Menu,
   shell
 } from "electron";
+import { safeStorageConfigEncryption } from "./config-encryption.js";
 import { DesktopConfigStore } from "./config-store.js";
 import { ServiceRuntime } from "./service-runtime.js";
 import { DESKTOP_CHANNELS } from "../shared/desktop.js";
@@ -18,6 +19,7 @@ import type { GatewayConfig } from "../src/types.js";
 import { text } from "./i18n.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
+app.setName("SQLTunnel");
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 let mainWindow: BrowserWindow | undefined;
@@ -46,14 +48,17 @@ if (!hasSingleInstanceLock) {
 }
 
 async function initializeDesktopApp(): Promise<void> {
-  app.setName("SQLTunnel");
+  if (process.platform === "win32") {
+    app.setAppUserModelId("dev.nemo.sqltunnel");
+  }
   applyDevelopmentAppIcon();
-  store = new DesktopConfigStore(app.getPath("userData"));
-  store.initialize();
-  config = store.loadGatewayConfig();
-  preferences = store.loadPreferences();
+  store = new DesktopConfigStore(app.getPath("userData"), safeStorageConfigEncryption);
+  await store.initialize();
+  config = await store.loadGatewayConfig();
+  preferences = await store.loadPreferences();
   runtime = new ServiceRuntime(
-    store.configPath,
+    () => config,
+    store.dataDirectory,
     preferences,
     path.join(app.getAppPath(), "docs", "openapi.json"),
     broadcastSnapshot,
@@ -89,7 +94,7 @@ function createMainWindow(): void {
     minHeight: 400,
     maxWidth: 520,
     title: "SQLTunnel",
-    titleBarStyle: "hiddenInset",
+    ...getTitleBarOptions(),
     backgroundColor: "#f4f5f7",
     fullscreenable: false,
     maximizable: false,
@@ -123,7 +128,7 @@ function createSettingsWindow(): void {
     minWidth: 720,
     minHeight: 520,
     title: text(getUiLocale(), "SQLTunnel Settings"),
-    titleBarStyle: "hiddenInset",
+    ...getTitleBarOptions(),
     backgroundColor: "#f5f6f8",
     fullscreenable: false,
     show: false,
@@ -164,14 +169,14 @@ function registerIpcHandlers(): void {
   ipcMain.handle(DESKTOP_CHANNELS.getSnapshot, () => getSnapshot());
   ipcMain.handle(DESKTOP_CHANNELS.saveConfig, async (_event, nextConfig: GatewayConfig) => {
     assertConfigurationEditable();
-    config = store.saveGatewayConfig(nextConfig);
+    config = await store.saveGatewayConfig(nextConfig);
     await runtime.configurationChanged();
     runtime.record("success", text(getUiLocale(), "Configuration saved"));
     return getSnapshot();
   });
-  ipcMain.handle(DESKTOP_CHANNELS.savePreferences, (_event, nextPreferences: DesktopPreferences) => {
+  ipcMain.handle(DESKTOP_CHANNELS.savePreferences, async (_event, nextPreferences: DesktopPreferences) => {
     assertConfigurationEditable();
-    preferences = store.savePreferences(nextPreferences);
+    preferences = await store.savePreferences(nextPreferences);
     runtime.setPreferences(preferences);
     runtime.setLocale(getUiLocale());
     runtime.record("success", text(getUiLocale(), "Desktop preferences saved"));
@@ -279,23 +284,31 @@ async function requestOpenSettings(): Promise<void> {
 
 function installApplicationMenu(): void {
   const locale = getUiLocale();
+  const settingsItem: Electron.MenuItemConstructorOptions = {
+    label: text(locale, "Settings…"),
+    accelerator: "CommandOrControl+,",
+    click: () => void requestOpenSettings()
+  };
   const template: Electron.MenuItemConstructorOptions[] = [
-    {
+    process.platform === "darwin" ? {
       label: app.name,
       submenu: [
         { role: "about" },
         { type: "separator" },
-        {
-          label: text(locale, "Settings…"),
-          accelerator: "CommandOrControl+,",
-          click: () => void requestOpenSettings()
-        },
+        settingsItem,
         { type: "separator" },
         { role: "hide" },
         { role: "hideOthers" },
         { role: "unhide" },
         { type: "separator" },
         { role: "quit" }
+      ]
+    } : {
+      label: text(locale, "File"),
+      submenu: [
+        settingsItem,
+        { type: "separator" },
+        { role: "quit", label: text(locale, "Exit") }
       ]
     },
     {
@@ -310,7 +323,7 @@ function installApplicationMenu(): void {
         { role: "selectAll" }
       ]
     },
-    {
+    process.platform === "darwin" ? {
       label: text(locale, "Window"),
       submenu: [
         { role: "minimize" },
@@ -318,9 +331,32 @@ function installApplicationMenu(): void {
         { type: "separator" },
         { role: "front" }
       ]
+    } : {
+      label: text(locale, "Window"),
+      submenu: [
+        { role: "minimize" },
+        { role: "close" }
+      ]
     }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function getTitleBarOptions(): Pick<Electron.BrowserWindowConstructorOptions, "titleBarStyle" | "titleBarOverlay"> {
+  if (process.platform === "darwin") {
+    return { titleBarStyle: "hiddenInset" };
+  }
+  if (process.platform === "win32") {
+    return {
+      titleBarStyle: "hidden",
+      titleBarOverlay: {
+        color: "#f7f7f8",
+        symbolColor: "#252936",
+        height: 38
+      }
+    };
+  }
+  return {};
 }
 
 function getUiLocale(): UiLocale {

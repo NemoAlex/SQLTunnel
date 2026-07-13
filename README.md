@@ -48,17 +48,24 @@ npm run build
 npm run start
 ```
 
-### macOS Desktop App
+### Desktop App for macOS and Windows
 
-The repository includes a compact Electron app: a small status window starts and stops the gateway and shows database/SSH connection state, while a separate settings window manages databases, tunnels, client grants, and global limits.
+The Electron desktop app provides a compact control surface for SQLTunnel:
+
+- Start and stop the local MCP/OpenAPI gateway and copy either endpoint URL.
+- Monitor database and SSH connection state, test database connections, and inspect runtime logs.
+- Configure MySQL and PostgreSQL directly or through reusable SSH tunnels with key, agent, SSH config, and ProxyJump support.
+- Issue Bearer API keys and grant per-database read/write access with optional row and timeout limits.
+- Encrypt all gateway configuration and desktop preferences with Electron SafeStorage (macOS Keychain or Windows DPAPI).
 
 ```bash
 npm install
 npm run desktop:dev  # Development mode
-npm run dist:mac     # Build the Apple Silicon app, DMG, and ZIP
+npm run dist:mac     # Build x64/arm64 DMG and ZIP artifacts
+npm run dist:win     # Build x64/arm64 installer and portable EXE artifacts
 ```
 
-The desktop app always binds to `127.0.0.1` and stores its configuration at `~/Library/Application Support/sqltunnel/gateway.yaml` by default. Sign it with a Developer ID and notarize it before public distribution.
+Configuration is stored as `gateway.secure` and `desktop.secure` in Electron's per-user application-data directory. GitHub Actions validates both platforms on pull requests and publishes macOS and Windows artifacts when a `v*.*.*` tag is pushed. Add the optional Apple and Windows signing secrets described in [the desktop release workflow](.github/workflows/desktop-release.yml) to produce trusted signed packages.
 
 The service listens on `0.0.0.0:3000` by default. Override it with environment variables:
 

@@ -274,6 +274,7 @@ function MainWindow({ snapshot, busy, notice, onToggle }: {
           <span className={`status-dot ${snapshot.service.phase}`} />
           <div>
             <strong>{statusLabels[snapshot.service.phase]}</strong>
+            <small>{t("Secure MCP and OpenAPI gateway for MySQL and PostgreSQL.")}</small>
           </div>
         </div>
         <button
@@ -766,7 +767,7 @@ function DatabaseEditor({ config, onChange }: EditorProps) {
 
   return (
     <div className="page">
-      <PageHeading eyebrow="CONNECTIONS" title={t("Database connections")} description={t("Manage MySQL and PostgreSQL connections.")} action={<button className="button primary" onClick={() => { databaseTestRevision.current += 1; setEditor({ draft: createDatabase() }); setEditorError(undefined); setDatabaseTestState("idle"); }}><Plus size={16} />{t("Add database")}</button>} />
+      <PageHeading eyebrow="CONNECTIONS" title={t("Database connections")} description={t("Connect MySQL and PostgreSQL directly or through reusable SSH tunnels, then test each connection before saving.")} action={<button className="button primary" onClick={() => { databaseTestRevision.current += 1; setEditor({ draft: createDatabase() }); setEditorError(undefined); setDatabaseTestState("idle"); }}><Plus size={16} />{t("Add database")}</button>} />
       {config.dbServers.length === 0 ? (
         <EmptyState icon={Database} title={t("No database connections yet")} description={t("Add one to assign client access.")} actionLabel={t("Add database")} onAction={() => { databaseTestRevision.current += 1; setEditor({ draft: createDatabase() }); setEditorError(undefined); setDatabaseTestState("idle"); }} />
       ) : (
@@ -950,7 +951,7 @@ function SshEditor({ config, onChange }: EditorProps) {
 
   return (
     <div className="page">
-      <PageHeading eyebrow="SECURE ROUTES" title={t("SSH tunnels")} description={t("Manage database bastion hosts.")} action={<button className="button primary" onClick={() => { testRevision.current += 1; setEditor({ draft: createSsh() }); setEditorError(undefined); setTestState("idle"); }}><Plus size={16} />{t("Add SSH")}</button>} />
+      <PageHeading eyebrow="SECURE ROUTES" title={t("SSH tunnels")} description={t("Create reusable SSH routes with passwords, private keys, SSH config aliases, and ProxyJump.")} action={<button className="button primary" onClick={() => { testRevision.current += 1; setEditor({ draft: createSsh() }); setEditorError(undefined); setTestState("idle"); }}><Plus size={16} />{t("Add SSH")}</button>} />
       {config.sshServers.length === 0 ? (
         <EmptyState icon={Network} title={t("No SSH tunnels configured")} description={t("No SSH tunnel is needed for direct connections.")} actionLabel={t("Add SSH")} onAction={() => { testRevision.current += 1; setEditor({ draft: createSsh() }); setEditorError(undefined); setTestState("idle"); }} />
       ) : (
@@ -1078,7 +1079,7 @@ function ClientEditor({ config, onChange }: EditorProps) {
 
   return (
     <div className="page">
-      <PageHeading eyebrow="ACCESS CONTROL" title={t("Clients and access")} description={t("Manage API keys and database access.")} action={<button className="button primary" onClick={() => setEditor({ draft: createClient() })}><Plus size={16} />{t("Add client")}</button>} />
+      <PageHeading eyebrow="ACCESS CONTROL" title={t("Clients and access")} description={t("Issue Bearer API keys and grant per-database read or write access with optional limits.")} action={<button className="button primary" onClick={() => setEditor({ draft: createClient() })}><Plus size={16} />{t("Add client")}</button>} />
       {config.clients.length === 0 ? (
         <EmptyState icon={UsersRound} title={t("No authorized clients yet")} description={t("Create an API key and assign database access.")} actionLabel={t("Add client")} onAction={() => setEditor({ draft: createClient() })} />
       ) : (
@@ -1185,7 +1186,7 @@ function SettingsEditor({ config, preferences, onConfigChange, onPreferencesChan
   const patchDefaults = (next: Partial<GatewayConfig["defaults"]>) => onConfigChange((current) => ({ ...current, defaults: { ...current.defaults, ...next } }));
   return (
     <div className="page settings-page">
-      <PageHeading eyebrow="PREFERENCES" title={t("Global settings")} description={t("Manage the local service and default limits.")} />
+      <PageHeading eyebrow="PREFERENCES" title={t("Global settings")} description={t("Configure the local MCP and OpenAPI endpoints, startup behavior, language, and default query safeguards.")} />
       <section className="settings-card">
         <PanelTitle icon={Server} title={t("Local service")} description={t("Listen only on the configured address")} />
         <div className="settings-row">

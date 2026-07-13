@@ -4,34 +4,49 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import type { ConfigEncryption } from "../electron/config-encryption.js";
 import {
   DEFAULT_DESKTOP_PREFERENCES,
   DesktopConfigStore
 } from "../electron/config-store.js";
 import { ServiceRuntime } from "../electron/service-runtime.js";
 import { resolveUiLocale } from "../shared/ui-locale.js";
-import { loadConfig } from "../src/config.js";
 import { GatewayService } from "../src/gateway-service.js";
 import { buildServer } from "../src/server.js";
 import type { GatewayConfig } from "../src/types.js";
 
-function createStore(t: test.TestContext): DesktopConfigStore {
+const testEncryption: ConfigEncryption = {
+  isAvailable: async () => true,
+  encryptString: async (plainText) => xorBuffer(Buffer.from(plainText, "utf8")),
+  decryptString: async (encrypted) => ({
+    result: xorBuffer(encrypted).toString("utf8"),
+    shouldReEncrypt: false
+  })
+};
+
+async function createStore(t: test.TestContext): Promise<DesktopConfigStore> {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sqltunnel-desktop-"));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const store = new DesktopConfigStore(directory);
-  store.initialize();
+  const store = new DesktopConfigStore(directory, testEncryption);
+  await store.initialize();
   return store;
 }
 
-test("desktop store initializes an editable gateway config", (t) => {
-  const store = createStore(t);
-  const config = store.loadGatewayConfig();
+function xorBuffer(value: Buffer): Buffer {
+  return Buffer.from(value.map((byte) => byte ^ 0xa5));
+}
+
+test("desktop store initializes encrypted editable configuration", async (t) => {
+  const store = await createStore(t);
+  const config = await store.loadGatewayConfig();
 
   assert.deepEqual(config.dbServers, []);
   assert.deepEqual(config.sshServers, []);
   assert.deepEqual(config.clients, []);
   assert.equal(config.defaults.maxRows, 1000);
-  assert.deepEqual(store.loadPreferences(), DEFAULT_DESKTOP_PREFERENCES);
+  assert.deepEqual(await store.loadPreferences(), DEFAULT_DESKTOP_PREFERENCES);
+  assert.equal(path.basename(store.configPath), "gateway.secure");
+  assert.equal(path.basename(store.preferencesPath), "desktop.secure");
 
   if (process.platform !== "win32") {
     assert.equal(fs.statSync(store.configPath).mode & 0o777, 0o600);
@@ -39,10 +54,10 @@ test("desktop store initializes an editable gateway config", (t) => {
   }
 });
 
-test("desktop store validates and atomically persists graphical config", (t) => {
-  const store = createStore(t);
+test("desktop store validates and atomically persists encrypted graphical config", async (t) => {
+  const store = await createStore(t);
   const config: GatewayConfig = {
-    ...store.loadGatewayConfig(),
+    ...await store.loadGatewayConfig(),
     dbServers: [{
       id: "app-db",
       type: "postgres",
@@ -61,29 +76,32 @@ test("desktop store validates and atomically persists graphical config", (t) => 
     }]
   };
 
-  const saved = store.saveGatewayConfig(config);
+  const saved = await store.saveGatewayConfig(config);
 
   assert.equal(saved.dbServers[0]?.id, "app-db");
   assert.equal(saved.clients[0]?.dbServers[0]?.permission, "read");
-  assert.equal(loadConfig(store.configPath).dbServers[0]?.database.password, "secret");
+  assert.equal((await store.loadGatewayConfig()).dbServers[0]?.database.password, "secret");
+  assert.equal(fs.readFileSync(store.configPath).includes(Buffer.from("secret")), false);
+  assert.equal(fs.readFileSync(store.configPath).includes(Buffer.from("test-key")), false);
   assert.equal(fs.readdirSync(store.dataDirectory).some((file) => file.endsWith(".tmp")), false);
 });
 
-test("desktop store rejects invalid config without replacing the saved file", (t) => {
-  const store = createStore(t);
-  const original = fs.readFileSync(store.configPath, "utf8");
+test("desktop store rejects invalid config without replacing the saved file", async (t) => {
+  const store = await createStore(t);
+  const original = fs.readFileSync(store.configPath);
+  const saved = await store.loadGatewayConfig();
   const invalid: GatewayConfig = {
-    ...store.loadGatewayConfig(),
-    defaults: { ...store.loadGatewayConfig().defaults, maxRows: 0 }
+    ...saved,
+    defaults: { ...saved.defaults, maxRows: 0 }
   };
 
-  assert.throws(() => store.saveGatewayConfig(invalid), /maxRows must be a positive integer/);
-  assert.equal(fs.readFileSync(store.configPath, "utf8"), original);
+  await assert.rejects(() => store.saveGatewayConfig(invalid), /maxRows must be a positive integer/);
+  assert.deepEqual(fs.readFileSync(store.configPath), original);
 });
 
-test("desktop store persists and validates the listener address", (t) => {
-  const store = createStore(t);
-  const saved = store.savePreferences({
+test("desktop store persists and validates encrypted preferences", async (t) => {
+  const store = await createStore(t);
+  const saved = await store.savePreferences({
     ...DEFAULT_DESKTOP_PREFERENCES,
     host: "0.0.0.0",
     port: 4567,
@@ -92,8 +110,9 @@ test("desktop store persists and validates the listener address", (t) => {
 
   assert.equal(saved.host, "0.0.0.0");
   assert.equal(saved.port, 4567);
-  assert.deepEqual(store.loadPreferences(), saved);
-  assert.throws(
+  assert.deepEqual(await store.loadPreferences(), saved);
+  assert.equal(fs.readFileSync(store.preferencesPath).includes(Buffer.from("0.0.0.0")), false);
+  await assert.rejects(
     () => store.savePreferences({ ...saved, host: " " }),
     /listen address cannot be empty/
   );
@@ -108,9 +127,9 @@ test("desktop UI follows supported system languages and falls back to English", 
 });
 
 test("desktop runtime starts the real Fastify gateway and stops cleanly", async (t) => {
-  const store = createStore(t);
-  store.saveGatewayConfig({
-    ...store.loadGatewayConfig(),
+  const store = await createStore(t);
+  const config = await store.saveGatewayConfig({
+    ...await store.loadGatewayConfig(),
     sshServers: [{ id: "bastion", host: "bastion.example.com", port: 22, username: "deploy" }],
     dbServers: [{
       id: "app-db",
@@ -127,7 +146,8 @@ test("desktop runtime starts the real Fastify gateway and stops cleanly", async 
   });
   const port = await reservePort();
   const runtime = new ServiceRuntime(
-    store.configPath,
+    () => config,
+    store.dataDirectory,
     { ...DEFAULT_DESKTOP_PREFERENCES, port },
     path.resolve("docs/openapi.json"),
     () => undefined
@@ -140,12 +160,12 @@ test("desktop runtime starts the real Fastify gateway and stops cleanly", async 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { status: "ok" });
   assert.equal(runtime.getStatus().phase, "running");
-  assert.equal(runtime.getConnections(store.loadGatewayConfig()).databases[0]?.state, "disconnected");
-  assert.equal(runtime.getConnections(store.loadGatewayConfig()).sshServers[0]?.state, "disconnected");
+  assert.equal(runtime.getConnections(config).databases[0]?.state, "disconnected");
+  assert.equal(runtime.getConnections(config).sshServers[0]?.state, "disconnected");
 
   await runtime.stop();
   assert.equal(runtime.getStatus().phase, "stopped");
-  assert.equal(runtime.getConnections(store.loadGatewayConfig()).databases[0]?.state, "disconnected");
+  assert.equal(runtime.getConnections(config).databases[0]?.state, "disconnected");
 });
 
 test("gateway reports database activity and the connection result around each request", async () => {

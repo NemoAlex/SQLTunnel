@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import path from "node:path";
-import { loadConfig, normalizeGatewayConfig } from "../src/config.js";
+import { normalizeGatewayConfig } from "../src/config.js";
 import { GatewayService } from "../src/gateway-service.js";
 import { buildServer } from "../src/server.js";
 import type { GatewayConfig } from "../src/types.js";
@@ -26,7 +25,8 @@ export class ServiceRuntime {
   private status: ServiceStatus;
 
   constructor(
-    private readonly configPath: string,
+    private readonly getConfig: () => GatewayConfig,
+    private readonly configDirectory: string,
     preferences: DesktopPreferences,
     private readonly openApiPath: string,
     private readonly onChange: () => void,
@@ -81,7 +81,7 @@ export class ServiceRuntime {
   }
 
   async testDatabaseConnection(dbServerId: string): Promise<void> {
-    const config = loadConfig(this.configPath);
+    const config = this.resolveConfig();
     for (const dbServer of config.dbServers) {
       if (!this.databaseStates.has(dbServer.id)) this.databaseStates.set(dbServer.id, "disconnected");
     }
@@ -99,7 +99,7 @@ export class ServiceRuntime {
   }
 
   async testDraftDatabaseConnection(config: GatewayConfig, dbServerId: string): Promise<void> {
-    const gateway = new GatewayService(normalizeGatewayConfig(config, path.dirname(this.configPath)));
+    const gateway = new GatewayService(normalizeGatewayConfig(config, this.configDirectory));
     try {
       await gateway.testConnection(dbServerId);
     } finally {
@@ -108,7 +108,7 @@ export class ServiceRuntime {
   }
 
   async testDraftSshConnection(config: GatewayConfig, sshServerId: string): Promise<void> {
-    const gateway = new GatewayService(normalizeGatewayConfig(config, path.dirname(this.configPath)));
+    const gateway = new GatewayService(normalizeGatewayConfig(config, this.configDirectory));
     try {
       await gateway.testSshConnection(sshServerId);
     } finally {
@@ -138,7 +138,7 @@ export class ServiceRuntime {
 
     let server: FastifyInstance | undefined;
     try {
-      const config = loadConfig(this.configPath);
+      const config = this.resolveConfig();
       if (!this.gateway) this.resetConnectionStates(config);
       const gateway = this.getOrCreateGateway(config);
       server = buildServer(config, {
@@ -301,6 +301,10 @@ export class ServiceRuntime {
       onSshConnectionStatus: (id, connected) => this.handleSshStatus(id, connected)
     });
     return this.gateway;
+  }
+
+  private resolveConfig(): GatewayConfig {
+    return normalizeGatewayConfig(this.getConfig(), this.configDirectory);
   }
 
   private async closeGateway(): Promise<void> {

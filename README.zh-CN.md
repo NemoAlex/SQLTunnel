@@ -48,17 +48,24 @@ npm run build
 npm run start
 ```
 
-### macOS 桌面 App
+### macOS 与 Windows 桌面 App
 
-仓库包含一个轻量的 Electron App：小型主窗口用于启停网关并显示数据库与 SSH 连接状态，独立设置窗口用于图形化管理数据库、SSH 隧道、客户端授权和全局限制。
+Electron 桌面端为 SQLTunnel 提供了完整的图形化控制界面：
+
+- 启停本地 MCP/OpenAPI 网关，并复制对应的端点 URL。
+- 查看数据库与 SSH 连接状态、测试数据库连接并检查运行日志。
+- 配置 MySQL、PostgreSQL 直连或可复用的 SSH 隧道，支持密钥、Agent、SSH Config 与 ProxyJump。
+- 签发 Bearer API Key，按数据库授予读写权限并设置可选的行数与超时限制。
+- 使用 Electron SafeStorage 加密全部网关配置和桌面偏好（macOS Keychain 或 Windows DPAPI）。
 
 ```bash
 npm install
 npm run desktop:dev  # 开发模式
-npm run dist:mac     # 生成 Apple Silicon App、DMG 和 ZIP
+npm run dist:mac     # 生成 x64/arm64 DMG 与 ZIP
+npm run dist:win     # 生成 x64/arm64 安装版与便携版 EXE
 ```
 
-桌面版固定监听 `127.0.0.1`，配置默认保存在 `~/Library/Application Support/sqltunnel/gateway.yaml`。正式分发前需使用 Developer ID 完成签名和 Apple 公证。
+桌面端在 Electron 的当前用户应用数据目录中以 `gateway.secure` 和 `desktop.secure` 保存配置。GitHub Actions 会在 Pull Request 中验证两个平台，并在推送 `v*.*.*` 标签时发布 macOS 与 Windows 安装包。如需生成受系统信任的签名包，可按[桌面发布工作流](.github/workflows/desktop-release.yml)中的说明配置可选的 Apple 与 Windows 签名密钥。
 
 服务默认监听 `0.0.0.0:3000`，可通过环境变量修改：
 
