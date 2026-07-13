@@ -34,7 +34,9 @@ SQLTunnel permet à Codex, Claude Code, Hermes, Dify et aux applications interne
 
 La version de bureau prend en charge macOS et Windows et rassemble la configuration, l’exécution et la surveillance de SQLTunnel dans une interface graphique.
 
-<!-- La capture d’écran de la fenêtre macOS native avec la configuration initiale en français sera placée ici. -->
+<p align="center">
+  <img src="sqltunnel-desktop-fr.png" alt="Version de bureau de SQLTunnel en cours d’exécution en français" width="512" />
+</p>
 
 ## Service sans interface
 

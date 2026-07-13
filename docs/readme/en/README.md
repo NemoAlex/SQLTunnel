@@ -34,7 +34,9 @@ SQLTunnel lets Codex, Claude Code, Hermes, Dify, and internal applications acces
 
 The desktop app is available for macOS and Windows, bringing SQLTunnel configuration, operation, and monitoring into a graphical interface.
 
-<!-- Native macOS window screenshot for the English initial configuration goes here. -->
+<p align="center">
+  <img src="sqltunnel-desktop-en.png" alt="SQLTunnel desktop app running in English" width="512" />
+</p>
 
 ## Headless service
 

@@ -34,7 +34,9 @@ SQLTunnel 让 Codex、Claude Code、Hermes、Dify 及内部应用按权限访问
 
 桌面版目前支持 macOS 与 Windows，把 SQLTunnel 的配置、运行和监控集中到图形界面中。
 
-<!-- 中文初始配置的 macOS 原生窗口截图放置于此。 -->
+<p align="center">
+  <img src="sqltunnel-desktop-zh-cn.png" alt="SQLTunnel 中文桌面版运行状态" width="512" />
+</p>
 
 ## 无界面服务版
 

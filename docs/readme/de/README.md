@@ -34,7 +34,9 @@ SQLTunnel ermöglicht Codex, Claude Code, Hermes, Dify und internen Anwendungen 
 
 Die Desktop-Version unterstützt macOS und Windows und bündelt Konfiguration, Betrieb und Überwachung von SQLTunnel in einer grafischen Oberfläche.
 
-<!-- Der Screenshot des nativen macOS-Fensters mit deutscher Erstkonfiguration wird hier eingefügt. -->
+<p align="center">
+  <img src="sqltunnel-desktop-de.png" alt="SQLTunnel-Desktop-Version in deutscher Sprache" width="512" />
+</p>
 
 ## Headless-Dienst
 
