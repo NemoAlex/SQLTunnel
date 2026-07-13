@@ -1,10 +1,10 @@
 # SQLTunnel 配置参考
 
-[返回 README](../README.zh-CN.md) | [API 参考](api.zh-CN.md) | [Dify 配置指南](dify.zh-CN.md)
+[返回 README](README.md) | [API 参考](api.md) | [Dify 配置指南](dify.md)
 
 ## 配置
 
-网关默认读取 `config/gateway.yaml`。可通过 `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` 覆盖。
+无界面服务版使用 `gateway.yaml` 管理网关配置。
 
 配置里使用三个核心概念：
 
@@ -18,6 +18,25 @@
 - `defaults.queryTimeoutMs`：默认数据库查询超时时间。默认值：`10000`。
 - `defaults.connectTimeoutMs`：默认 SSH tunnel 建立和数据库连接超时时间。默认值：`10000`。
 - `defaults.schemaCacheTtlMs`：数据库 Schema 元数据的内存缓存时间。默认值：`300000`（5 分钟）；设为 `0` 可关闭缓存。
+
+### 配置文件与路径
+
+推荐目录结构：
+
+```text
+config/
+  gateway.yaml
+  gateway.example.yaml
+  ssh/                 # 可选
+    config             # SSH Host Alias、用户、端口、ProxyJump 等信息
+    id_rsa             # 密钥登录使用的私钥
+```
+
+默认配置文件为 `config/gateway.yaml`。设置 `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` 可以从其他位置加载配置。
+
+`sshConfigPath` 和 `privateKeyPath` 使用相对路径时，均以 `gateway.yaml` 所在目录为基准解析。因此可以将完整的 `config` 目录直接挂载到 Docker 容器的 `/app/config`。
+
+`gateway.yaml` 可能包含数据库密码、客户端 API Key、SSH 密码和私钥路径。请勿将真实配置提交到版本控制；应限制文件访问权限，并只为每个客户端授予所需数据库及 `read` 或 `write` 权限。
 
 ### SSH Servers
 

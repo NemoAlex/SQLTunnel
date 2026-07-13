@@ -6,5 +6,5 @@
 - Added graphical management for MySQL/PostgreSQL connections, reusable SSH tunnels, client API keys, and per-database permissions.
 - Added direct connection tests, runtime connection indicators, endpoint copying, and local logs.
 - Added encrypted desktop configuration backed by macOS Keychain and Windows DPAPI through Electron SafeStorage.
-- Added x64 and arm64 packages for macOS plus installer and portable packages for Windows.
-- Added GitHub Actions validation and tagged desktop release publishing.
+- Added arm64 and x64 DMG packages for macOS plus an x64 Setup package for Windows.
+- Added fast source validation on pull requests and `main`, with parallel packaging reserved for tagged or manually triggered releases.

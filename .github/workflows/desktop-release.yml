@@ -1,4 +1,4 @@
-name: Desktop
+name: Desktop Release
 
 # Optional repository secrets for trusted packages:
 # - macOS: MAC_CSC_LINK, MAC_CSC_KEY_PASSWORD, APPLE_ID,
@@ -8,10 +8,7 @@ name: Desktop
 # downloaded artifacts will show the operating system's unsigned-app warning.
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
     tags: ["v*.*.*"]
   workflow_dispatch:
 
@@ -19,19 +16,9 @@ permissions:
   contents: read
 
 jobs:
-  build-desktop:
-    name: Build ${{ matrix.name }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: macOS
-            os: macos-14
-            artifact: sqltunnel-macos
-          - name: Windows
-            os: windows-2022
-            artifact: sqltunnel-windows
-    runs-on: ${{ matrix.os }}
+  verify-desktop:
+    name: Verify release sources
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out source
@@ -44,7 +31,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund
 
       - name: Verify release tag matches package version
         if: startsWith(github.ref, 'refs/tags/')
@@ -61,8 +48,61 @@ jobs:
       - name: Build desktop sources
         run: npm run build:desktop
 
-      - name: Package macOS x64 and arm64
-        if: runner.os == 'macOS'
+  package-desktop:
+    name: Package ${{ matrix.name }}
+    needs: verify-desktop
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-14
+            platform: mac
+            arch: arm64
+            artifact: sqltunnel-macos-arm64
+          - name: macOS x64
+            os: macos-14
+            platform: mac
+            arch: x64
+            artifact: sqltunnel-macos-x64
+          - name: Windows x64
+            os: windows-2022
+            platform: win
+            arch: x64
+            artifact: sqltunnel-windows-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cache Electron build tools
+        uses: actions/cache@v6
+        with:
+          path: |
+            .cache/electron
+            .cache/electron-builder
+          key: electron-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            electron-${{ runner.os }}-${{ matrix.arch }}-
+
+      - name: Install dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build desktop sources
+        run: npm run build:desktop
+
+      - name: Package macOS ${{ matrix.arch }}
+        if: matrix.platform == 'mac'
         env:
           SQLTUNNEL_MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           SQLTUNNEL_MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
@@ -79,10 +119,10 @@ jobs:
           else
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
-          npx electron-builder --mac --x64 --arm64 --publish never
+          npx electron-builder --mac --${{ matrix.arch }} --publish never
 
-      - name: Package Windows x64 and arm64
-        if: runner.os == 'Windows'
+      - name: Package Windows ${{ matrix.arch }}
+        if: matrix.platform == 'win'
         env:
           SQLTUNNEL_WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           SQLTUNNEL_WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
@@ -93,7 +133,7 @@ jobs:
           } else {
             $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
           }
-          npx electron-builder --win --x64 --arm64 --publish never
+          npx electron-builder --win --${{ matrix.arch }} --publish never
 
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v7
@@ -103,13 +143,11 @@ jobs:
           retention-days: 14
           path: |
             release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.blockmap
+            release/*-Setup.exe
 
   publish-release:
     name: Publish GitHub Release
-    needs: build-desktop
+    needs: package-desktop
     runs-on: ubuntu-latest
     permissions:
       contents: write

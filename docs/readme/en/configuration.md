@@ -1,10 +1,10 @@
 # SQLTunnel Configuration Reference
 
-[Back to README](../README.md) | [API reference](api.md) | [Dify setup guide](dify.md)
+[Back to README](README.md) | [API reference](api.md) | [Dify setup guide](dify.md)
 
 ## Configuration
 
-SQLTunnel reads `config/gateway.yaml` by default. You can override it with `SQLTUNNEL_CONFIG=/path/to/gateway.yaml`.
+The headless service uses `gateway.yaml` for gateway configuration.
 
 The configuration has three main sections:
 
@@ -18,6 +18,25 @@ Optional global defaults:
 - `defaults.queryTimeoutMs`: Default database query timeout. Default: `10000`.
 - `defaults.connectTimeoutMs`: Default SSH tunnel and database connection timeout. Default: `10000`.
 - `defaults.schemaCacheTtlMs`: In-memory database schema metadata cache TTL. Default: `300000` (5 minutes). Set to `0` to disable caching.
+
+### Configuration file and paths
+
+Recommended layout:
+
+```text
+config/
+  gateway.yaml
+  gateway.example.yaml
+  ssh/                 # Optional
+    config             # SSH Host aliases, users, ports, ProxyJump, and related settings
+    id_rsa             # Private key used for key-based authentication
+```
+
+The default file is `config/gateway.yaml`. Set `SQLTUNNEL_CONFIG=/path/to/gateway.yaml` to load it from another location.
+
+Relative `sshConfigPath` and `privateKeyPath` values are resolved from the directory containing `gateway.yaml`. This allows the complete `config` directory to be mounted directly at `/app/config` in Docker.
+
+`gateway.yaml` may contain database passwords, client API keys, SSH passwords, and private-key paths. Never commit real configuration to version control. Restrict file permissions and grant each client only the databases and `read` or `write` access it requires.
 
 ### SSH Servers
 

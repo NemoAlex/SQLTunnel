@@ -1,10 +1,10 @@
 # SQLTunnel API 参考
 
-[返回 README](../README.zh-CN.md) | [配置参考](configuration.zh-CN.md) | [Dify 配置指南](dify.zh-CN.md)
+[返回 README](README.md) | [配置参考](configuration.md) | [Dify 配置指南](dify.md)
 
 ## API
 
-面向 Dify 的配置和调用说明见 [dify.zh-CN.md](dify.zh-CN.md)。
+面向 Dify 的配置和调用说明见 [Dify 配置指南](dify.md)。
 
 ### GET /health
 

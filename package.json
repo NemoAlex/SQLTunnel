@@ -19,7 +19,7 @@
     "desktop:dev": "npm run build:core && npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "desktop:preview": "npm run build:desktop && electron .",
     "dist:mac": "npm run build:desktop && electron-builder --mac --x64 --arm64",
-    "dist:win": "npm run build:desktop && electron-builder --win --x64 --arm64",
+    "dist:win": "npm run build:desktop && electron-builder --win --x64",
     "start": "node dist/index.js",
     "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.renderer.json"
@@ -74,19 +74,13 @@
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon-1024-macos.png",
       "artifactName": "${productName}-${version}-macOS-${arch}.${ext}",
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": "dmg",
       "hardenedRuntime": true
     },
     "win": {
       "icon": "assets/icon-1024-macos.png",
       "artifactName": "${productName}-${version}-Windows-${arch}.${ext}",
-      "target": [
-        "nsis",
-        "portable"
-      ]
+      "target": "nsis"
     },
     "nsis": {
       "artifactName": "${productName}-${version}-Windows-${arch}-Setup.${ext}",
@@ -96,9 +90,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "SQLTunnel"
-    },
-    "portable": {
-      "artifactName": "${productName}-${version}-Windows-${arch}-Portable.${ext}"
     },
     "dmg": {
       "title": "SQLTunnel ${version}"

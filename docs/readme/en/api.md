@@ -1,6 +1,6 @@
 # SQLTunnel API Reference
 
-[Back to README](../README.md) | [Configuration reference](configuration.md) | [Dify setup guide](dify.md)
+[Back to README](README.md) | [Configuration reference](configuration.md) | [Dify setup guide](dify.md)
 
 ## API
 

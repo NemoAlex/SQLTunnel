@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon-1024-macos.png" alt="SQLTunnel app icon" width="128" />
+  <img src="../../../assets/icon-1024-macos.png" alt="SQLTunnel app icon" width="128" />
 </p>
 
 <h1 align="center">SQLTunnel</h1>
@@ -12,12 +12,12 @@
 </p>
 
 <p align="center">
-  <a href="docs/readme/en/README.md">English</a> |
-  <a href="docs/readme/zh-CN/README.md">中文</a> |
-  <a href="docs/readme/ja/README.md">日本語</a> |
-  <a href="docs/readme/ko/README.md">한국어</a> |
-  <a href="docs/readme/fr/README.md">Français</a> |
-  <a href="docs/readme/de/README.md">Deutsch</a>
+  <a href="README.md">English</a> |
+  <a href="../zh-CN/README.md">中文</a> |
+  <a href="../ja/README.md">日本語</a> |
+  <a href="../ko/README.md">한국어</a> |
+  <a href="../fr/README.md">Français</a> |
+  <a href="../de/README.md">Deutsch</a>
 </p>
 
 SQLTunnel lets Codex, Claude Code, Hermes, Dify, and internal applications access MySQL and PostgreSQL with controlled permissions, without exposing database ports directly.
@@ -40,8 +40,8 @@ The desktop app is available for macOS and Windows, bringing SQLTunnel configura
 
 The headless edition uses the same gateway core and is designed for Docker, servers, and background deployments. It manages databases, SSH tunnels, and client permissions through `gateway.yaml`, and exposes the same MCP/OpenAPI interfaces as the desktop app.
 
-- [Docker deployment](docs/readme/en/docker.md)
-- [Configuration reference](docs/readme/en/configuration.md)
+- [Docker deployment](docker.md)
+- [Configuration reference](configuration.md)
 
 ## How it works
 
@@ -59,10 +59,10 @@ SQLTunnel identifies callers with Bearer API keys, controls read/write access pe
 
 ## Documentation
 
-- [Docker deployment](docs/readme/en/docker.md)
-- [Configuration reference](docs/readme/en/configuration.md)
-- [API reference](docs/readme/en/api.md)
-- [Dify](docs/readme/en/dify.md)
-- [Claude Code](docs/readme/en/claude-code.md)
-- [Codex](docs/readme/en/codex.md)
-- [Hermes](docs/readme/en/hermes.md)
+- [Docker deployment](docker.md)
+- [Configuration reference](configuration.md)
+- [API reference](api.md)
+- [Dify](dify.md)
+- [Claude Code](claude-code.md)
+- [Codex](codex.md)
+- [Hermes](hermes.md)
