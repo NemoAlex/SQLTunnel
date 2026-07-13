@@ -72,8 +72,8 @@ jobs:
             artifact: sqltunnel-windows-x64
     runs-on: ${{ matrix.os }}
     env:
-      ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
-      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+      ELECTRON_CACHE: ${{ runner.temp }}/electron
+      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder
 
     steps:
       - name: Check out source
@@ -89,8 +89,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            .cache/electron
-            .cache/electron-builder
+            ${{ env.ELECTRON_CACHE }}
+            ${{ env.ELECTRON_BUILDER_CACHE }}
           key: electron-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             electron-${{ runner.os }}-${{ matrix.arch }}-
