@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1 - 2026-07-16
+
+- Fixed macOS release packaging so DMG artifacts are signed and notarized before publication.
+
 ## 1.1.0 - 2026-07-13
 
 - Added a macOS and Windows desktop app for starting, stopping, configuring, and monitoring SQLTunnel.
