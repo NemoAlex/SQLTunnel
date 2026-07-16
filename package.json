@@ -92,7 +92,8 @@
       "shortcutName": "SQLTunnel"
     },
     "dmg": {
-      "title": "SQLTunnel ${version}"
+      "title": "SQLTunnel ${version}",
+      "sign": true
     }
   }
 }

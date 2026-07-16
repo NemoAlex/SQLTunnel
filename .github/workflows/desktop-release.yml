@@ -1,11 +1,10 @@
 name: Desktop Release
 
-# Optional repository secrets for trusted packages:
-# - macOS: MAC_CSC_LINK, MAC_CSC_KEY_PASSWORD, APPLE_ID,
+# Required repository secrets for signed and notarized macOS packages:
+# - MAC_CSC_LINK, MAC_CSC_KEY_PASSWORD, APPLE_ID,
 #   APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
-# - Windows: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
-# Builds remain usable for local testing when these secrets are absent, but
-# downloaded artifacts will show the operating system's unsigned-app warning.
+# Optional Windows signing secrets:
+# - WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
 
 on:
   push:
@@ -101,25 +100,51 @@ jobs:
       - name: Build desktop sources
         run: npm run build:desktop
 
-      - name: Package macOS ${{ matrix.arch }}
+      - name: Package, sign, and notarize macOS ${{ matrix.arch }}
         if: matrix.platform == 'mac'
         env:
-          SQLTUNNEL_MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          SQLTUNNEL_MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           SQLTUNNEL_APPLE_ID: ${{ secrets.APPLE_ID }}
           SQLTUNNEL_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           SQLTUNNEL_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [[ -n "$SQLTUNNEL_MAC_CSC_LINK" ]]; then
-            export CSC_LINK="$SQLTUNNEL_MAC_CSC_LINK"
-            export CSC_KEY_PASSWORD="$SQLTUNNEL_MAC_CSC_KEY_PASSWORD"
-            export APPLE_ID="$SQLTUNNEL_APPLE_ID"
-            export APPLE_APP_SPECIFIC_PASSWORD="$SQLTUNNEL_APPLE_APP_SPECIFIC_PASSWORD"
-            export APPLE_TEAM_ID="$SQLTUNNEL_APPLE_TEAM_ID"
-          else
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-          fi
+          required_secrets=(
+            CSC_LINK
+            CSC_KEY_PASSWORD
+            SQLTUNNEL_APPLE_ID
+            SQLTUNNEL_APPLE_APP_SPECIFIC_PASSWORD
+            SQLTUNNEL_APPLE_TEAM_ID
+          )
+          for secret_name in "${required_secrets[@]}"; do
+            if [[ -z "${!secret_name}" ]]; then
+              echo "::error::Required macOS signing secret is missing: $secret_name"
+              exit 1
+            fi
+          done
+
+          # electron-builder signs both the app and DMG. Apple credentials use
+          # prefixed names so it does not notarize the app before the DMG exists.
           npx electron-builder --mac --${{ matrix.arch }} --publish never
+
+          app_path="$(find release -type d -name '*.app' -print -quit)"
+          dmg_path="$(find release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          if [[ -z "$app_path" || -z "$dmg_path" ]]; then
+            echo "::error::Could not find the packaged app or DMG"
+            exit 1
+          fi
+
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          codesign --verify --strict --verbose=2 "$dmg_path"
+          xcrun notarytool submit "$dmg_path" \
+            --apple-id "$SQLTUNNEL_APPLE_ID" \
+            --password "$SQLTUNNEL_APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$SQLTUNNEL_APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$dmg_path"
+          xcrun stapler validate "$dmg_path"
+          spctl --assess --type open \
+            --context context:primary-signature --verbose=4 "$dmg_path"
 
       - name: Package Windows ${{ matrix.arch }}
         if: matrix.platform == 'win'
